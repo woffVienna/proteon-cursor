@@ -103,3 +103,20 @@ clean:
 		echo "==> cleaning $$s"; \
 		$(MAKE) -C services/$$s clean; \
 	done
+
+# -------- CI/CD checks --------
+.PHONY: verify-generated
+verify-generated: generate
+	@echo "Verifying generated code is up to date..."
+	@if ! git diff --quiet -- services/*/internal/**/generated/**; then \
+		echo ""; \
+		echo "ERROR: Generated files are out of date."; \
+		echo "Run 'make generate' and commit the changes."; \
+		echo ""; \
+		git --no-pager diff -- services/*/internal/**/generated/**; \
+		exit 1; \
+	fi
+	@echo "OK: generated code is up to date."
+
+.PHONY: check
+check: verify-generated test
