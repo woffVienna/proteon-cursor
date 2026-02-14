@@ -1,0 +1,64 @@
+# ----------------------------
+# Go
+# ----------------------------
+# Binaries
+/bin/
+/services/*/bin/
+/dist/
+
+# Go build cache
+*.test
+*.out
+*.exe
+*.dll
+*.so
+*.dylib
+
+# ----------------------------
+# Go tools (local installs)
+# ----------------------------
+/tools/bin/
+
+# ----------------------------
+# Node tooling
+# ----------------------------
+/tools/node/node_modules/
+/tools/node/npm-debug.log*
+/tools/node/.npm/
+
+# ----------------------------
+# OpenAPI generated artifacts
+# ----------------------------
+# Bundled specs
+/services/*/api/.generated/
+
+# If you ever regenerate code instead of committing it,
+# uncomment the next line:
+# /services/*/internal/**/generated/
+
+# ----------------------------
+# IDE / Editor
+# ----------------------------
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# ----------------------------
+# Logs
+# ----------------------------
+*.log
+
+# ----------------------------
+# Docker / local infra
+# ----------------------------
+.env
+.env.*
+docker-compose.override.yml
+
+# ----------------------------
+# Misc
+# ----------------------------
+coverage.out
+coverage.html
