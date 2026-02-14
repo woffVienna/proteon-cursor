@@ -3,7 +3,6 @@
 # ----------------------------
 # Binaries
 /bin/
-/services/*/bin/
 /dist/
 
 # Go build cache
@@ -27,10 +26,10 @@
 /tools/node/.npm/
 
 # ----------------------------
-# OpenAPI generated artifacts
+# Service build artifacts
 # ----------------------------
-# Bundled specs
-/services/*/api/.generated/
+# Bundled specs. binaries, etc.
+/services/*/.build/
 
 # If you ever regenerate code instead of committing it,
 # uncomment the next line:

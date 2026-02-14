@@ -11,15 +11,17 @@ REDOCLY := npx --prefix $(NODE_TOOLING_DIR) redocly
 OAPI_CODEGEN ?= oapi-codegen
 
 API_DIR := api
-GEN_DIR := $(API_DIR)/.generated
+BUILD_DIR := .build
+GEN_DIR := $(BUILD_DIR)
+BIN_DIR := $(BUILD_DIR)/bin
 
 OPENAPI_SRC := $(API_DIR)/openapi.yml
 OPENAPI_BUNDLE := $(GEN_DIR)/openapi.bundle.yml
 
-OAPI_SERVER_CFG := $(API_DIR)/oapi-codegen.server.yml
-
 HTTP_GEN_DIR := internal/adapters/http/generated/server
 HTTP_GEN_FILE := $(HTTP_GEN_DIR)/openapi.gen.go
+
+OAPI_SERVER_CFG := $(API_DIR)/oapi-codegen.server.yml
 
 .PHONY: help
 help:
@@ -83,11 +85,10 @@ run:
 
 .PHONY: build
 build:
-	@mkdir -p bin
-	$(GO) build -o bin/$(SERVICE) ./cmd/$(SERVICE)
+	@mkdir -p $(BIN_DIR)
+	$(GO) build -o $(BIN_DIR)/$(SERVICE) ./cmd/$(SERVICE)
 
 .PHONY: clean
 clean:
-	@rm -rf bin
-	@rm -f $(OPENAPI_BUNDLE)
+	@rm -rf $(BUILD_DIR)
 	@rm -f $(HTTP_GEN_FILE)
