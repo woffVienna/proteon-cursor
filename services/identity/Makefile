@@ -44,10 +44,6 @@ lint:
 		echo "golangci-lint not installed. Skipping."; \
 	fi
 
-.PHONY: test
-test:
-	$(GO) test ./...
-
 .PHONY: generate
 generate: $(HTTP_GEN_FILE)
 
@@ -83,6 +79,10 @@ dev: generate
 run:
 	$(GO) run ./cmd/$(SERVICE)
 
+.PHONY: test
+test:
+	$(GO) test ./...
+	
 .PHONY: build
 build:
 	@mkdir -p $(BIN_DIR)

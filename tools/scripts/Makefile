@@ -12,7 +12,7 @@ OAPI_CODEGEN ?= oapi-codegen
 
 API_DIR := api
 BUILD_DIR := .build
-GEN_DIR := $(BUILD_DIR)
+GEN_DIR := $(BUILD_DIR)/generated
 BIN_DIR := $(BUILD_DIR)/bin
 
 OPENAPI_SRC := $(API_DIR)/openapi.yml
