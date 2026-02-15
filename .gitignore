@@ -25,12 +25,6 @@
 /tools/node/npm-debug.log*
 /tools/node/.npm/
 
-# ----------------------------
-# Service build artifacts
-# ----------------------------
-# Bundled specs. binaries, etc.
-/services/*/.build/
-
 # If you ever regenerate code instead of committing it,
 # uncomment the next line:
 # /services/*/internal/**/generated/
