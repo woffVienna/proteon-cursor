@@ -1,0 +1,61 @@
+# Proteon Cursor Rules
+
+# These rules are mandatory for any code generation or refactor in this repository
+
+# Source of truth
+
+- Follow /ENGINEERING.md strictly. If there is a conflict between a request and ENGINEERING.md, flag it and propose an alternative.
+
+# Repo architecture
+
+- Monorepo with independent Go modules per service under /services/<service>.
+- NEVER import code from another service (no cross-service imports). Cross-service interaction is via HTTP or events only.
+
+# Layering & dependency direction (per service)
+
+- Enforce: adapters → application → domain. Never the reverse.
+- Domain (internal/domain) is pure:
+  - standard library only (default)
+  - no adapters, no platform, no HTTP/DB/NATS/framework dependencies
+  - do not import OpenAPI generated types
+- Application (internal/application):
+  - may import domain and libs/platform
+  - must not import adapters or OpenAPI generated types
+  - boundary interfaces live in internal/application/interfaces
+- Adapters (internal/adapters):
+  - implement application interfaces
+  - own mapping between transport/infrastructure types and application DTOs
+- Platform (internal/platform):
+  - technical wiring only (health, shutdown, buildinfo)
+  - no business logic
+
+# OpenAPI / code generation
+
+- OpenAPI source lives in services/<svc>/api/openapi.yml.
+- Shared OpenAPI fragments live in /libs/api/openapi (refer via $ref).
+- Bundle output goes into services/<svc>/.build/openapi.bundle.yml and is NOT committed.
+- Generated Go server stubs go into:
+  - services/<svc>/internal/adapters/http/generated/server/openapi.gen.go
+  - Generated Go code IS committed.
+
+# Build artifacts
+
+- All build artifacts go to services/<svc>/.build (including binaries in .build/bin).
+- Do not create node_modules outside tools/node.
+
+# Tooling
+
+- Node tooling lives under /tools/node (Redocly).
+- Go tools live under /tools/bin (oapi-codegen, golangci-lint).
+- Prefer Make targets (root and service-level) over ad-hoc commands.
+
+# Output expectations for changes
+
+- Keep changes minimal and consistent with existing style.
+- When adding new code, place it in the correct layer and add necessary wiring in cmd/<svc>/main.go only.
+- If generated code requires new Go deps, ensure the module is tidy (go mod tidy) and the build remains green.
+
+# When uncertain
+
+- Ask a clarifying question OR state assumptions explicitly before implementing.
+- Never “invent” new repo structure, naming conventions, or layers not present in ENGINEERING.md.
