@@ -33,6 +33,7 @@ if [[ ! -f "${TEMPLATE_MAKEFILE}" ]]; then
 fi
 
 # --- folders: minimal structure (add db, nats, platform, etc. when needed) ---
+mkdir -p "${ROOT}/api"
 mkdir -p "${ROOT}/cmd/${SERVICE}"
 mkdir -p "${ROOT}/internal/adapters/http/generated/server"
 mkdir -p "${ROOT}/internal/application/interfaces"

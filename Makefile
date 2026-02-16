@@ -23,7 +23,7 @@ help:
 	@echo "  tooling-node     - install node tooling in tools/node"
 	@echo "  tooling-go       - install go tools into tools/bin"
 	@echo "  work             - init/update go.work to include all services + libs/platform"
-	@echo "  create-service   - create a new service (usage: make create-service SERVICE=<name>)"
+	@echo "  create-service <name> - create a new service (e.g. make create-service api)"
 	@echo "  generate         - run make generate in all services"
 	@echo "  test             - run make test in all services"
 	@echo "  build            - run make build in all services"
@@ -77,13 +77,19 @@ work:
 	@echo "go.work updated."
 
 # -------- Service creation --------
+# Usage: make create-service <name>  (e.g. make create-service api)
+SERVICE_NAME := $(firstword $(filter-out create-service,$(MAKECMDGOALS)))
 .PHONY: create-service
 create-service:
-	@if [ -z "$(SERVICE)" ]; then \
-		echo "Usage: make create-service SERVICE=<name>"; \
+	@if [ -z "$(SERVICE_NAME)" ]; then \
+		echo "Usage: make create-service <name>"; \
 		exit 1; \
 	fi
-	@$(REPO_ROOT)/tools/scripts/create-service-structure.sh $(SERVICE)
+	@$(REPO_ROOT)/tools/scripts/create-service-structure.sh $(SERVICE_NAME)
+
+# Consume the service name so make does not try to build it as a target
+%:
+	@:
 
 # -------- Fan-out targets to services --------
 .PHONY: generate
