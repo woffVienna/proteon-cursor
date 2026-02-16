@@ -66,6 +66,6 @@ For a small service, flat structure is acceptable. Consider migrating when the s
 
 ---
 
-## 7. Unused Adapters
+## 7. Unused Adapters ✅ DONE
 
-`internal/adapters/db/db.go` and `internal/adapters/nats/nats.go` are stubs. They are fine as placeholders for future use.
+Removed `internal/adapters/db/` and `internal/adapters/nats/` stubs. Add when needed (DB, NATS).

@@ -12,7 +12,7 @@ OAPI_CODEGEN ?= oapi-codegen
 
 API_DIR := api
 BUILD_DIR := .build
-GEN_DIR := $(API_DIR)/.generated
+GEN_DIR := $(BUILD_DIR)/generated
 BIN_DIR := $(BUILD_DIR)/bin
 
 OPENAPI_SRC := $(API_DIR)/openapi.yml
@@ -91,4 +91,3 @@ build:
 .PHONY: clean
 clean:
 	@rm -rf $(BUILD_DIR)
-	@rm -f $(HTTP_GEN_FILE)

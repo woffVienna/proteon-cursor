@@ -23,6 +23,7 @@ help:
 	@echo "  tooling-node     - install node tooling in tools/node"
 	@echo "  tooling-go       - install go tools into tools/bin"
 	@echo "  work             - init/update go.work to include all services + libs/platform"
+	@echo "  create-service   - create a new service (usage: make create-service SERVICE=<name>)"
 	@echo "  generate         - run make generate in all services"
 	@echo "  test             - run make test in all services"
 	@echo "  build            - run make build in all services"
@@ -74,6 +75,15 @@ work:
 		go work use ./services/$$s; \
 	done
 	@echo "go.work updated."
+
+# -------- Service creation --------
+.PHONY: create-service
+create-service:
+	@if [ -z "$(SERVICE)" ]; then \
+		echo "Usage: make create-service SERVICE=<name>"; \
+		exit 1; \
+	fi
+	@$(REPO_ROOT)/tools/scripts/create-service-structure.sh $(SERVICE)
 
 # -------- Fan-out targets to services --------
 .PHONY: generate
