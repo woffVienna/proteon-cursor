@@ -38,6 +38,7 @@ mkdir -p "${ROOT}/cmd/${SERVICE}"
 mkdir -p "${ROOT}/internal/adapters/http/generated/server"
 mkdir -p "${ROOT}/internal/application/interfaces"
 mkdir -p "${ROOT}/internal/domain"
+mkdir -p "${ROOT}/test"
 
 # --- non-go placeholder files ---
 touch "${ROOT}/api/openapi.yml"
