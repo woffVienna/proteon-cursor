@@ -7,7 +7,7 @@ import (
 	"github.com/woffVienna/proteon-cursor/services/identity/internal/domain"
 )
 
-// MemoryStore is an in-memory implementation of RefreshTokenStore.
+// MemoryStore is an in-memory implementation of interfaces.RefreshTokenStore.
 // For production, replace with a DB-backed store (e.g. Postgres).
 type MemoryStore struct {
 	mu   sync.Mutex
@@ -21,7 +21,7 @@ func NewMemoryStore() *MemoryStore {
 	}
 }
 
-// Store implements domain.RefreshTokenStore.
+// Store implements interfaces.RefreshTokenStore.
 func (s *MemoryStore) Store(_ context.Context, token string, info domain.SessionInfo) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -29,7 +29,7 @@ func (s *MemoryStore) Store(_ context.Context, token string, info domain.Session
 	return nil
 }
 
-// Get implements domain.RefreshTokenStore.
+// Get implements interfaces.RefreshTokenStore.
 // Returns (info, true, nil) if found, (zero, false, nil) if not found.
 func (s *MemoryStore) Get(_ context.Context, token string) (domain.SessionInfo, bool, error) {
 	s.mu.Lock()
@@ -38,7 +38,7 @@ func (s *MemoryStore) Get(_ context.Context, token string) (domain.SessionInfo, 
 	return info, ok, nil
 }
 
-// Delete implements domain.RefreshTokenStore.
+// Delete implements interfaces.RefreshTokenStore.
 func (s *MemoryStore) Delete(_ context.Context, token string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()

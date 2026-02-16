@@ -9,9 +9,10 @@ import (
 
 	"github.com/woffVienna/proteon-cursor/libs/platform/httpcommon"
 	"github.com/woffVienna/proteon-cursor/libs/platform/security/jwtverifier"
+	"github.com/woffVienna/proteon-cursor/services/identity/internal/adapters/auth"
 	"github.com/woffVienna/proteon-cursor/services/identity/internal/adapters/http/generated/server"
 	authapp "github.com/woffVienna/proteon-cursor/services/identity/internal/application/auth"
-	"github.com/woffVienna/proteon-cursor/services/identity/internal/domain"
+	"github.com/woffVienna/proteon-cursor/services/identity/internal/application/interfaces"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -31,7 +32,7 @@ func DefaultConfig() Config {
 	}
 	return Config{
 		Port:              port,
-		OpenAPIBundlePath: "api/openapi/identity-service/openapi.bundle.yaml",
+		OpenAPIBundlePath: ".build/generated/openapi.bundle.yml",
 	}
 }
 
@@ -42,10 +43,10 @@ type Server struct {
 }
 
 // NewServer creates an HTTP server with the given dependencies.
-func NewServer(cfg Config, authSvc *authapp.Service, issuer domain.TokenIssuer) *Server {
+func NewServer(cfg Config, authSvc *authapp.Service, issuer interfaces.TokenIssuer) *Server {
 	verifier := jwtverifier.New(jwtverifier.Config{
-		Issuer:   issuerFromEnv(),
-		Audience: audienceFromEnv(),
+		Issuer:   auth.IssuerFromEnv(),
+		Audience: auth.AudienceFromEnv(),
 		Keys: map[string]ed25519.PublicKey{
 			issuer.Kid(): issuer.PublicKey(),
 		},

@@ -91,4 +91,3 @@ build:
 .PHONY: clean
 clean:
 	@rm -rf $(BUILD_DIR)
-	@rm -f $(HTTP_GEN_FILE)

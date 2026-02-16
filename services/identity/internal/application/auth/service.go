@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"time"
 
+	"github.com/woffVienna/proteon-cursor/services/identity/internal/application/interfaces"
 	"github.com/woffVienna/proteon-cursor/services/identity/internal/domain"
 )
 
@@ -17,16 +18,16 @@ const (
 
 // Service implements the auth use cases.
 type Service struct {
-	validator domain.CredentialValidator
-	store     domain.RefreshTokenStore
-	issuer    domain.TokenIssuer
+	validator interfaces.CredentialValidator
+	store     interfaces.RefreshTokenStore
+	issuer    interfaces.TokenIssuer
 }
 
 // NewService creates an auth service with the given dependencies.
 func NewService(
-	validator domain.CredentialValidator,
-	store domain.RefreshTokenStore,
-	issuer domain.TokenIssuer,
+	validator interfaces.CredentialValidator,
+	store interfaces.RefreshTokenStore,
+	issuer interfaces.TokenIssuer,
 ) *Service {
 	return &Service{
 		validator: validator,

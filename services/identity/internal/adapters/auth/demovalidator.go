@@ -21,7 +21,7 @@ func NewDemoValidator() *DemoValidator {
 	return &DemoValidator{}
 }
 
-// Validate implements domain.CredentialValidator.
+// Validate implements interfaces.CredentialValidator.
 func (v *DemoValidator) Validate(ctx context.Context, login, password string) (domain.UserInfo, error) {
 	if login != demoLogin || password != demoPassword {
 		return domain.UserInfo{}, domain.ErrInvalidCredentials

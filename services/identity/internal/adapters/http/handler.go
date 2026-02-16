@@ -11,18 +11,19 @@ import (
 	"github.com/woffVienna/proteon-cursor/libs/platform/security/jwtverifier"
 	"github.com/woffVienna/proteon-cursor/services/identity/internal/adapters/http/generated/server"
 	authapp "github.com/woffVienna/proteon-cursor/services/identity/internal/application/auth"
+	"github.com/woffVienna/proteon-cursor/services/identity/internal/application/interfaces"
 	"github.com/woffVienna/proteon-cursor/services/identity/internal/domain"
 )
 
 // Handler implements server.StrictServerInterface.
 type Handler struct {
 	authSvc  *authapp.Service
-	issuer   domain.TokenIssuer
+	issuer   interfaces.TokenIssuer
 	verifier *jwtverifier.Verifier
 }
 
 // NewHandler creates an HTTP handler.
-func NewHandler(authSvc *authapp.Service, issuer domain.TokenIssuer, verifier *jwtverifier.Verifier) *Handler {
+func NewHandler(authSvc *authapp.Service, issuer interfaces.TokenIssuer, verifier *jwtverifier.Verifier) *Handler {
 	return &Handler{
 		authSvc:  authSvc,
 		issuer:   issuer,

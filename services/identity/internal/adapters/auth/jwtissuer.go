@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/ed25519"
 	"crypto/rand"
-	"os"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -30,12 +29,12 @@ func NewJWTIssuer() (*JWTIssuer, error) {
 		kid:        "dev-identity-001",
 		publicKey:  pub,
 		privateKey: priv,
-		issuer:     issuerFromEnv(),
-		audience:   audienceFromEnv(),
+		issuer:     IssuerFromEnv(),
+		audience:   AudienceFromEnv(),
 	}, nil
 }
 
-// Issue implements domain.TokenIssuer.
+// Issue implements interfaces.TokenIssuer.
 func (j *JWTIssuer) Issue(_ context.Context, userID, tenant string, ttl time.Duration) (string, error) {
 	now := time.Now()
 	claims := jwt.MapClaims{
@@ -52,26 +51,12 @@ func (j *JWTIssuer) Issue(_ context.Context, userID, tenant string, ttl time.Dur
 	return token.SignedString(j.privateKey)
 }
 
-// PublicKey implements domain.TokenIssuer.
+// PublicKey implements interfaces.TokenIssuer.
 func (j *JWTIssuer) PublicKey() ed25519.PublicKey {
 	return j.publicKey
 }
 
-// Kid implements domain.TokenIssuer.
+// Kid implements interfaces.TokenIssuer.
 func (j *JWTIssuer) Kid() string {
 	return j.kid
-}
-
-func issuerFromEnv() string {
-	if v := os.Getenv("JWT_ISSUER"); v != "" {
-		return v
-	}
-	return "proteon.identity"
-}
-
-func audienceFromEnv() string {
-	if v := os.Getenv("JWT_AUDIENCE"); v != "" {
-		return v
-	}
-	return "proteon-api"
 }
