@@ -91,3 +91,18 @@ build:
 .PHONY: clean
 clean:
 	@rm -rf $(BUILD_DIR)
+
+# -------- Containerisation --------
+
+IMAGE_REPO ?= proteon
+IMAGE_TAG ?= dev
+DOCKERFILE ?= Dockerfile
+IMAGE := $(IMAGE_REPO)/$(SERVICE):$(IMAGE_TAG)
+
+.PHONY: containerise
+containerise:
+	@echo "Building docker image -> $(IMAGE)"
+	@docker build \
+		-f "$(REPO_ROOT)/services/$(SERVICE)/$(DOCKERFILE)" \
+		-t "$(IMAGE)" \
+		"$(REPO_ROOT)"

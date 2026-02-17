@@ -136,3 +136,33 @@ verify-generated: generate
 
 .PHONY: check
 check: verify-generated test
+
+# -------- Local docker orchestration (deps + stack) --------
+DOCKER_NETWORK := proteon
+COMPOSE_DEPS_FILE := $(REPO_ROOT)/tools/docker/compose.deps.yml
+COMPOSE_SERVICES_FILE := $(REPO_ROOT)/tools/docker/compose.services.yml
+
+.PHONY: ensure-network
+ensure-network:
+	@docker network inspect $(DOCKER_NETWORK) >/dev/null 2>&1 || \
+		( echo "Creating docker network '$(DOCKER_NETWORK)'" && docker network create $(DOCKER_NETWORK) >/dev/null )
+
+.PHONY: deps-up
+deps-up: ensure-network
+	@echo "Starting local dependencies (compose.deps.yml)"
+	@docker compose -f "$(COMPOSE_DEPS_FILE)" up -d
+
+.PHONY: deps-down
+deps-down:
+	@echo "Stopping local dependencies (compose.deps.yml)"
+	@docker compose -f "$(COMPOSE_DEPS_FILE)" down
+
+.PHONY: stack-up
+stack-up: ensure-network
+	@echo "Starting full local stack (deps + services)"
+	@docker compose -f "$(COMPOSE_DEPS_FILE)" -f "$(COMPOSE_SERVICES_FILE)" up -d
+
+.PHONY: stack-down
+stack-down:
+	@echo "Stopping full local stack (deps + services)"
+	@docker compose -f "$(COMPOSE_DEPS_FILE)" -f "$(COMPOSE_SERVICES_FILE)" down
