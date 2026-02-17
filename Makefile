@@ -28,6 +28,7 @@ help:
 	@echo "  test             - run make test in all services"
 	@echo "  build            - run make build in all services"
 	@echo "  clean            - run make clean in all services"
+	@echo "  stack-refresh    - rebuild all service images and start full stack"
 
 # -------- Setup (one command) --------
 .PHONY: setup
@@ -161,6 +162,14 @@ deps-down:
 stack-up: ensure-network
 	@echo "Starting full local stack (deps + services)"
 	@docker compose -f "$(COMPOSE_DEPS_FILE)" -f "$(COMPOSE_SERVICES_FILE)" up -d
+
+.PHONY: stack-refresh-up
+stack-refresh-up:
+	@for s in $(SERVICES); do \
+		echo "==> containerising $$s"; \
+		$(MAKE) -C services/$$s containerise; \
+	done
+	@$(MAKE) stack-up
 
 .PHONY: stack-down
 stack-down:

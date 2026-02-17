@@ -146,6 +146,7 @@ Root Makefile:
 - deps-up
 - deps-down
 - stack-up
+- stack-refresh-up
 - stack-down
 
 Service Makefile:

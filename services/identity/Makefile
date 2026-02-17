@@ -97,7 +97,10 @@ clean:
 IMAGE_REPO ?= proteon
 IMAGE_TAG ?= dev
 DOCKERFILE ?= Dockerfile
-IMAGE := $(IMAGE_REPO)/$(SERVICE):$(IMAGE_TAG)
+# Keep runtime/build paths based on SERVICE (= folder name), but allow
+# docker image naming to follow deployed service naming.
+IMAGE_NAME ?= $(SERVICE)-service
+IMAGE := $(IMAGE_REPO)/$(IMAGE_NAME):$(IMAGE_TAG)
 
 .PHONY: containerise
 containerise:
