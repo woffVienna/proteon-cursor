@@ -101,7 +101,7 @@ Canonical layout:
 
 - `api/openapi.yml` is the source of truth.
 - Shared schemas live in `libs/api/openapi/`.
-- Bundled spec: `.build/openapi.bundle.yml` (ignored).
+- Bundled spec: `.build/generated/openapi.bundle.yml` (ignored).
 - Generated server stubs:
     `internal/adapters/http/generated/server/openapi.gen.go`
     (committed).
@@ -118,7 +118,7 @@ Canonical layout:
 # 5. Build Artifacts
 
     .build/
-      openapi.bundle.yml
+      generated/openapi.bundle.yml
       bin/<service>
 
 Ignored via `.gitignore`.
@@ -127,25 +127,39 @@ Ignored via `.gitignore`.
 
 # 6. Makefile Responsibilities
 
+This section defines the canonical target names referenced by `DEV.md`.
+
 Root Makefile:
 
 - setup
 - tooling
+- tooling-node
+- tooling-go
 - work
+- create-service
 - generate
 - verify-generated
 - check
 - test
 - build
+- clean
+- deps-up
+- deps-down
+- stack-up
+- stack-down
 
 Service Makefile:
 
+- tidy
+- fmt
+- lint
 - generate
 - test
 - build
 - dev
 - run
 - clean
+- containerise
 
 ------------------------------------------------------------------------
 
@@ -199,7 +213,6 @@ Committed:
 - SDK / client codegen location
 - Cross-service client strategy
 - Event schema versioning strategy
-- Local infra orchestration
 
 ------------------------------------------------------------------------
 

@@ -33,7 +33,7 @@
 
 - OpenAPI source lives in services/<svc>/api/openapi.yml.
 - Shared OpenAPI fragments live in /libs/api/openapi (refer via $ref).
-- Bundle output goes into services/<svc>/.build/openapi.bundle.yml and is NOT committed.
+- Bundle output goes into services/<svc>/.build/generated/openapi.bundle.yml and is NOT committed.
 - Generated Go server stubs go into:
   - services/<svc>/internal/adapters/http/generated/server/openapi.gen.go
   - Generated Go code IS committed.
