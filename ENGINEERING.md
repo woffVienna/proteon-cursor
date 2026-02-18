@@ -15,10 +15,10 @@ Proteon is a monorepo containing multiple independent Go services.
 
 Each service:
 
-- Lives under `services/<service>/`
-- Is a fully independent Go module (`go.mod` per service)
-- Must not import other services directly
-- Communicates with other services via HTTP or asynchronous events
+-   Lives under `services/<service>/`
+-   Is a fully independent Go module (`go.mod` per service)
+-   Must not import other services directly
+-   Communicates with other services via HTTP or asynchronous events
     only
 
 Cross-service imports are forbidden.
@@ -37,17 +37,17 @@ technical concerns.
 
 It may contain:
 
-- Logging abstractions
-- Configuration loading
-- Error primitives
-- Observability helpers
-- Cross-cutting middleware utilities
+-   Logging abstractions
+-   Configuration loading/orchestration
+-   Error primitives
+-   Observability helpers
+-   Cross-cutting middleware utilities
 
 Rules:
 
-- Services may import `libs/platform`.
-- `libs/platform` must not import any service.
-- `libs/platform` must not contain business logic.
+-   Services may import `libs/platform`.
+-   `libs/platform` must not import any service.
+-   `libs/platform` must not contain business logic.
 
 ------------------------------------------------------------------------
 
@@ -60,6 +60,12 @@ Each service follows a strict internal layering model:
       application/
       adapters/
       platform/
+
+Dependency direction is strictly:
+
+    adapters → application → domain
+
+Never the reverse.
 
 ------------------------------------------------------------------------
 
@@ -95,27 +101,100 @@ Canonical layout:
       Makefile
       go.mod
 
+Convention:
+
+-   Each service must expose its entrypoint under `cmd/<svc>/main.go`.
+-   The `<svc>` name must match the service folder name.
+
 ------------------------------------------------------------------------
 
-# 3. OpenAPI & Code Generation
+# 3. Coding Style Principles
 
-- `api/openapi.yml` is the source of truth.
-- Shared schemas live in `libs/api/openapi/`.
-- Bundled spec: `.build/generated/openapi.bundle.yml` (ignored).
-- Generated server stubs:
+Proteon prefers cohesive, struct-based design.
+
+## 3.1 Preferred Pattern
+
+Use constructor functions and receiver methods:
+
+    type Service struct {
+        repo Repository
+        logger Logger
+    }
+
+    func NewService(repo Repository, logger Logger) *Service {
+        return &Service{repo: repo, logger: logger}
+    }
+
+    func (s *Service) Execute(ctx context.Context, input Input) error {
+        ...
+    }
+
+## 3.2 Avoid
+
+-   Large standalone functions that pass many dependencies as
+    parameters.
+-   "Function soup" orchestration across layers.
+
+## 3.3 When to Use Pure Functions
+
+-   Domain logic
+-   Stateless mappers
+-   Validation helpers
+-   Small utility helpers
+
+Application services, repositories, handlers, schedulers, and clients
+must be struct-based.
+
+------------------------------------------------------------------------
+
+# 4. Configuration Model
+
+Proteon uses a two-layer configuration model.
+
+## 4.1 CoreConfig
+
+-   Source: environment variables
+-   Immutable at runtime
+-   Loaded at service startup
+-   Fail-fast validation
+-   Changes require restart or redeploy
+
+## 4.2 RuntimeConfig
+
+-   Source: Postgres (`service_runtime_settings`)
+-   Defaults applied first
+-   DB overrides applied second
+-   Validation executed at startup
+-   Changes require service restart
+-   No live mutation
+
+Shared configuration loading logic lives in `libs/platform`.
+Service-specific config structs live inside each service.
+
+Configuration is resolved once at startup.
+
+------------------------------------------------------------------------
+
+# 5. OpenAPI & Code Generation
+
+-   `api/openapi.yml` is the source of truth.
+-   Shared schemas live in `libs/api/openapi/`.
+-   Bundled spec: `.build/generated/openapi.bundle.yml` (ignored).
+-   Generated server stubs:
     `internal/adapters/http/generated/server/openapi.gen.go`
     (committed).
 
 ------------------------------------------------------------------------
 
-# 4. Tooling
+# 6. Tooling
 
-- Node tooling: `tools/node/`
-- Go tooling: `tools/bin/`
+-   Node tooling: `tools/node/`
+-   Go tooling: `tools/bin/`
+-   Docker assets: `tools/docker/`
 
 ------------------------------------------------------------------------
 
-# 5. Build Artifacts
+# 7. Build Artifacts
 
     .build/
       generated/openapi.bundle.yml
@@ -125,46 +204,44 @@ Ignored via `.gitignore`.
 
 ------------------------------------------------------------------------
 
-# 6. Makefile Responsibilities
-
-This section defines the canonical target names referenced by `DEV.md`.
+# 8. Makefile Responsibilities
 
 Root Makefile:
 
-- setup
-- tooling
-- tooling-node
-- tooling-go
-- work
-- create-service
-- generate
-- verify-generated
-- check
-- test
-- build
-- clean
-- deps-up
-- deps-down
-- stack-up
-- stack-refresh-up
-- stack-down
+-   setup
+-   tooling
+-   tooling-node
+-   tooling-go
+-   work
+-   create-service
+-   generate
+-   verify-generated
+-   check
+-   test
+-   build
+-   clean
+-   deps-up
+-   deps-down
+-   stack-up
+-   stack-refresh-up
+-   stack-down
 
 Service Makefile:
 
-- tidy
-- fmt
-- lint
-- generate
-- test
-- build
-- dev
-- run
-- clean
-- containerise
+-   tidy
+-   fmt
+-   lint
+-   generate
+-   test
+-   build
+-   dev
+-   run
+-   clean
+-   containerise
 
 ------------------------------------------------------------------------
 
-# 7. Local Development Workflow
+# 9. Local Development Workflow
 
 From repo root:
 
@@ -184,7 +261,7 @@ After adding new imports:
 
 ------------------------------------------------------------------------
 
-# 8. CI Contract
+# 10. CI Contract
 
 Minimum CI pipeline:
 
@@ -194,26 +271,27 @@ Minimum CI pipeline:
 
 ------------------------------------------------------------------------
 
-# 9. Git Policy
+# 11. Git Policy
 
 Ignored:
 
-- services/\*/.build/
-- tools/node/node_modules/
-- tools/bin/
+-   services/\*/.build/
+-   services/\*/.env
+-   tools/node/node_modules/
+-   tools/bin/
 
 Committed:
 
-- Generated Go server code
-- go.work
+-   Generated Go server code
+-   go.work
 
 ------------------------------------------------------------------------
 
-# 10. Deferred Decisions
+# 12. Deferred Decisions
 
-- SDK / client codegen location
-- Cross-service client strategy
-- Event schema versioning strategy
+-   SDK / client codegen location
+-   Cross-service client strategy
+-   Event schema versioning strategy
 
 ------------------------------------------------------------------------
 

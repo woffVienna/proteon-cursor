@@ -1,61 +1,171 @@
 # Proteon Cursor Rules
 
-# These rules are mandatory for any code generation or refactor in this repository
+These rules are mandatory for any code generation or refactor in this
+repository.
+
+------------------------------------------------------------------------
 
 # Source of truth
 
-- Follow /ENGINEERING.md strictly. If there is a conflict between a request and ENGINEERING.md, flag it and propose an alternative.
+-   Follow `/ENGINEERING.md` strictly.
+-   If there is a conflict between a request and ENGINEERING.md, flag it
+    and propose an alternative.
+
+------------------------------------------------------------------------
 
 # Repo architecture
 
-- Monorepo with independent Go modules per service under /services/<service>.
-- NEVER import code from another service (no cross-service imports). Cross-service interaction is via HTTP or events only.
+-   Monorepo with independent Go modules per service under
+    `/services/<service>`.
+-   NEVER import code from another service (no cross-service imports).
+-   Cross-service interaction is via HTTP or events only.
+
+------------------------------------------------------------------------
 
 # Layering & dependency direction (per service)
 
-- Enforce: adapters → application → domain. Never the reverse.
-- Domain (internal/domain) is pure:
-  - standard library only (default)
-  - no adapters, no platform, no HTTP/DB/NATS/framework dependencies
-  - do not import OpenAPI generated types
-- Application (internal/application):
-  - may import domain and libs/platform
-  - must not import adapters or OpenAPI generated types
-  - boundary interfaces live in internal/application/interfaces
-- Adapters (internal/adapters):
-  - implement application interfaces
-  - own mapping between transport/infrastructure types and application DTOs
-- Platform (internal/platform):
-  - technical wiring only (health, shutdown, buildinfo)
-  - no business logic
+Enforce strict dependency direction:
+
+adapters → application → domain
+
+Never the reverse.
+
+## Domain (`internal/domain`)
+
+-   Pure.
+-   Standard library only (default).
+-   No adapters, no platform, no HTTP/DB/NATS/framework dependencies.
+-   Do not import OpenAPI generated types.
+-   Prefer pure functions and behavior on domain models.
+
+## Application (`internal/application`)
+
+-   May import domain and `libs/platform`.
+-   Must not import adapters or OpenAPI generated types.
+-   Boundary interfaces live in `internal/application/interfaces`.
+-   Application services should be struct-based with constructor
+    functions.
+-   Prefer cohesive service structs with receiver methods over
+    standalone functions.
+
+## Adapters (`internal/adapters`)
+
+-   Implement application interfaces.
+-   Own mapping between transport/infrastructure types and application
+    DTOs.
+-   May import external frameworks (HTTP, DB, NATS, etc.).
+-   Use struct-based implementations (e.g. repositories, handlers,
+    clients).
+
+## Platform (`internal/platform`)
+
+-   Technical wiring only (config, health, shutdown, buildinfo).
+-   No business logic.
+
+------------------------------------------------------------------------
+
+# Coding Style (Mandatory)
+
+## General
+
+-   Prefer struct-based design with constructor functions and receiver
+    methods.
+-   Avoid large standalone functions that pass many dependencies as
+    parameters.
+-   Group related behavior inside cohesive types.
+
+Example preferred pattern:
+
+type Service struct { repo Repository logger Logger }
+
+func NewService(repo Repository, logger Logger) \*Service { return
+&Service{repo: repo, logger: logger} }
+
+func (s \*Service) Execute(ctx context.Context, input Input) error { ...
+}
+
+## Avoid
+
+Function-style orchestration with dependency explosion unless the
+function is truly pure and stateless.
+
+## When to use pure functions
+
+-   Domain logic
+-   Stateless mappers
+-   Validation helpers
+-   Small utility functions
+
+## When to use struct + methods
+
+-   Application services
+-   Repositories
+-   HTTP handler sets
+-   Background jobs / schedulers
+-   External clients
+-   Configuration loaders
+
+------------------------------------------------------------------------
+
+# Configuration
+
+-   Core configuration is provided by environment variables.
+-   Runtime configuration is loaded from DB.
+-   Configuration is resolved once at service startup.
+-   No runtime mutation of configuration.
+-   Shared configuration loading/orchestration lives in `libs/platform`.
+-   Service-specific config structs live in the service.
+
+------------------------------------------------------------------------
 
 # OpenAPI / code generation
 
-- OpenAPI source lives in services/<svc>/api/openapi.yml.
-- Shared OpenAPI fragments live in /libs/api/openapi (refer via $ref).
-- Bundle output goes into services/<svc>/.build/generated/openapi.bundle.yml and is NOT committed.
-- Generated Go server stubs go into:
-  - services/<svc>/internal/adapters/http/generated/server/openapi.gen.go
-  - Generated Go code IS committed.
+-   OpenAPI source lives in `services/<svc>/api/openapi.yml`.
+-   Shared OpenAPI fragments live in `/libs/api/openapi` (refer via
+    `$ref`).
+-   Bundle output goes into:
+    `services/<svc>/.build/generated/openapi.bundle.yml` and is NOT
+    committed.
+-   Generated Go server stubs go into:
+    `services/<svc>/internal/adapters/http/generated/server/openapi.gen.go`.
+-   Generated Go code IS committed.
+
+------------------------------------------------------------------------
 
 # Build artifacts
 
-- All build artifacts go to services/<svc>/.build (including binaries in .build/bin).
-- Do not create node_modules outside tools/node.
+-   All build artifacts go to `services/<svc>/.build` (including
+    binaries in `.build/bin`).
+-   Do not create `node_modules` outside `tools/node`.
+
+------------------------------------------------------------------------
 
 # Tooling
 
-- Node tooling lives under /tools/node (Redocly).
-- Go tools live under /tools/bin (oapi-codegen, golangci-lint).
-- Prefer Make targets (root and service-level) over ad-hoc commands.
+-   Node tooling lives under `/tools/node` (Redocly).
+-   Go tools live under `/tools/bin` (oapi-codegen, golangci-lint).
+-   Docker assets live under `/tools/docker`.
+-   Prefer Make targets (root and service-level) over ad-hoc commands.
+
+------------------------------------------------------------------------
 
 # Output expectations for changes
 
-- Keep changes minimal and consistent with existing style.
-- When adding new code, place it in the correct layer and add necessary wiring in cmd/<svc>/main.go only.
-- If generated code requires new Go deps, ensure the module is tidy (go mod tidy) and the build remains green.
+-   Keep changes minimal and consistent with existing style.
+-   When adding new code:
+    -   Place it in the correct layer.
+    -   Add necessary wiring in `cmd/<svc>/main.go` only.
+-   If generated code requires new Go deps:
+    -   Ensure module is tidy (`go mod tidy`).
+    -   Ensure build remains green.
+-   Do not introduce new layers, patterns, or architectural concepts
+    unless explicitly requested.
+
+------------------------------------------------------------------------
 
 # When uncertain
 
-- Ask a clarifying question OR state assumptions explicitly before implementing.
-- Never “invent” new repo structure, naming conventions, or layers not present in ENGINEERING.md.
+-   Ask a clarifying question OR state assumptions explicitly before
+    implementing.
+-   Never invent new repo structure, naming conventions, or layers not
+    present in ENGINEERING.md.
