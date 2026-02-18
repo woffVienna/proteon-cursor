@@ -25,8 +25,8 @@ This will:
     `libs/platform`
 
 No manual Docker setup is required.\
-The shared Docker network is created automatically by `make deps-up` or
-`make stack-up`.
+The shared Docker network is created automatically by `make deps-up`,
+`make stack-up`, or `make stack-refresh-up`.
 
 ------------------------------------------------------------------------
 
@@ -99,18 +99,22 @@ make dev
 `dev` contract:
 
 -   Always runs `generate` first
--   Loads environment variables from local `.env` (if present)
+-   Starts with `RUNTIME_MODE=local` by default
+-   Loads `.env.local` through the shared config loader
 -   Runs `go run ./cmd/<service>`
 -   Prevents running with stale OpenAPI stubs
 
-### Required local `.env`
+### Local service env file
 
-Example:
+Example (`services/<service>/.env.local`):
 
-    DB_DSN=postgres://proteon:proteon@localhost:5432/proteon?sslmode=disable
+    SERVICE_NAME=identity-service
     ENV=dev
     MARKET=AT
-    SERVICE_NAME=identity
+    VERSION=dev
+    PORT=8081
+    PUBLIC_BASE_URL=http://localhost:8081
+    DB_DSN=postgres://proteon:proteon@localhost:5432/proteon?sslmode=disable
 
 When running via `go run`:
 
@@ -178,6 +182,15 @@ This runs:
 docker compose   -f tools/docker/compose.deps.yml   -f tools/docker/compose.services.yml   up -d
 ```
 
+If you changed Dockerfiles or env/config wiring, use:
+
+``` bash
+make stack-refresh-up
+```
+
+This rebuilds all service images (`make containerise` per service) and then
+starts the stack.
+
 Stop full stack:
 
 ``` bash
@@ -204,6 +217,10 @@ Dockerfile location:
 
 Build context is the repository root.
 
+`containerise` first runs `generate` so `.build/generated/openapi.bundle.yml`
+exists before image build. Docker runtime image includes this bundled spec so
+`/swagger` and `/openapi.yaml` work inside containers as well.
+
 ------------------------------------------------------------------------
 
 ## Container Networking Rules
@@ -225,52 +242,45 @@ This difference is expected.
 
 # 6. Configuration Model
 
-Proteon uses a two-layer configuration model.
+Proteon services resolve configuration once at startup from environment.
+
+Shared loader:
+
+-   `libs/platform/config/env.go` resolves `RUNTIME_MODE` and loads
+    `.env.<mode>` from the service directory
+-   `libs/platform/config/loader.go` provides a typed loader with defaults
+    for common fields (`ServiceName`, `ENV`, `MARKET`, `VERSION`, `HTTP`)
+-   Each service assembles bespoke typed fields in
+    `services/<service>/internal/platform/config`
 
 ------------------------------------------------------------------------
 
-## 6.1 CoreConfig (Immutable)
+## 6.1 Runtime Modes and Env Files
 
-Source:
+`RUNTIME_MODE` values:
 
--   Environment variables
--   Optional static config files
+-   `local`  -> `.env.local`
+-   `docker` -> `.env.docker`
+-   `cloud`  -> `.env.cloud` (optional; runtime env injection is preferred)
 
-Used for:
-
--   DB endpoints
--   Ports
--   Infra wiring
--   ENV
--   MARKET
-
-Behavior:
-
--   Loaded at startup
--   Strict validation
--   Fail fast on missing required values
--   Changes require restart or redeploy
+Key names stay the same across all modes (for example `PORT`, `DB_DSN`,
+`JWT_ISSUER`).
 
 ------------------------------------------------------------------------
 
-## 6.2 RuntimeConfig (DB-Backed)
+## 6.2 Resolution Order and Typed Service Config
 
-Source:
+Resolution order per key:
 
--   `service_runtime_settings` table in Postgres
+1. Existing process env (shell/docker/cloud injected)
+2. Selected `.env.<mode>` file value
+3. Built-in default (if defined)
 
-Behavior:
+Service-specific typed config is parsed into `Config.Service` by the service
+loader callback (for example `Config.Service.JWT` in identity).
 
--   Defaults applied first
--   DB overrides applied second
--   Unknown keys ignored with warning
--   Validation executed
--   Warnings logged
--   Changes require service restart
--   No redeploy required
-
-Runtime configuration is resolved once at startup.\
-No runtime mutation.
+Configuration is resolved once at startup.\
+Changes require restart/redeploy.
 
 ------------------------------------------------------------------------
 
