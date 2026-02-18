@@ -46,8 +46,11 @@
 # ----------------------------
 # Docker / local infra
 # ----------------------------
-.env
-.env.*
+# Ignore env files by default (any directory)
+**/.env
+**/.env.*
+
+# Track only service runtime env files that are part of repo conventions
 !services/*/.env.local
 !services/*/.env.docker
 !services/*/.env.cloud
