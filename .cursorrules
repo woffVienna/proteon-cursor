@@ -5,7 +5,7 @@ repository.
 
 ------------------------------------------------------------------------
 
-# Source of truth
+# Source of Truth
 
 -   Follow `/ENGINEERING.md` strictly.
 -   If there is a conflict between a request and ENGINEERING.md, flag it
@@ -13,16 +13,22 @@ repository.
 
 ------------------------------------------------------------------------
 
-# Repo architecture
+# Architectural Principles
 
 -   Monorepo with independent Go modules per service under
     `/services/<service>`.
 -   NEVER import code from another service (no cross-service imports).
 -   Cross-service interaction is via HTTP or events only.
 
+## Shared Libraries (`libs/`)
+
+-   Services may import `libs/platform`.
+-   `libs/platform` must not import any service.
+-   `libs/platform` must not contain business logic.
+
 ------------------------------------------------------------------------
 
-# Layering & dependency direction (per service)
+# Layered Clean Architecture (Per Service)
 
 Enforce strict dependency direction:
 
@@ -64,7 +70,20 @@ Never the reverse.
 
 ------------------------------------------------------------------------
 
-# Coding Style (Mandatory)
+# Service Structure Conventions
+
+-   Each service must expose its entrypoint under `cmd/<svc>/main.go`.
+-   The `<svc>` name must match the service folder name.
+-   Keep canonical internal layout:
+    -   `internal/adapters`
+    -   `internal/application` (including `dto`, `interfaces`,
+        `services`)
+    -   `internal/domain` (including `model`, `rules`)
+    -   `internal/platform`
+
+------------------------------------------------------------------------
+
+# Coding Style Principles (Mandatory)
 
 ## General
 
@@ -76,29 +95,33 @@ Never the reverse.
 
 Example preferred pattern:
 
-type Service struct { repo Repository logger Logger }
+    type Service struct {
+        repo Repository
+        logger Logger
+    }
 
-func NewService(repo Repository, logger Logger) \*Service { return
-&Service{repo: repo, logger: logger} }
+    func NewService(repo Repository, logger Logger) *Service {
+        return &Service{repo: repo, logger: logger}
+    }
 
-func (s \*Service) Execute(ctx context.Context, input Input) error { ...
-}
+    func (s *Service) Execute(ctx context.Context, input Input) error {
+        ...
+    }
 
 ## Avoid
 
 -   Large standalone functions that pass many dependencies as
     parameters.
--   "Function soup" orchestration across layers unless the function is
-    truly pure and stateless.
+-   "Function soup" orchestration across layers.
 
-## When to use pure functions
+## When to Use Pure Functions
 
 -   Domain logic
 -   Stateless mappers
 -   Validation helpers
 -   Small utility helpers
 
-## When to use struct + methods
+## When to Use Struct + Methods
 
 -   Application services
 -   Repositories
@@ -112,18 +135,26 @@ must be struct-based.
 
 ------------------------------------------------------------------------
 
-# Configuration
+# Configuration Model
 
--   Core configuration is provided by environment variables.
--   Runtime configuration is loaded from DB.
--   Configuration is resolved once at service startup.
--   No runtime mutation of configuration.
+-   CoreConfig:
+    -   Source: environment variables.
+    -   Immutable at runtime.
+    -   Loaded at service startup with fail-fast validation.
+    -   Changes require restart or redeploy.
+-   RuntimeConfig:
+    -   Source: Postgres (`service_runtime_settings`).
+    -   Defaults applied first, DB overrides second.
+    -   Validation executed at startup.
+    -   Changes require service restart.
+    -   No live mutation.
+-   Configuration is resolved once at startup.
 -   Shared configuration loading/orchestration lives in `libs/platform`.
 -   Service-specific config structs live in the service.
 
 ------------------------------------------------------------------------
 
-# OpenAPI / code generation
+# OpenAPI & Code Generation
 
 -   OpenAPI source lives in `services/<svc>/api/openapi.yml`.
 -   Shared OpenAPI fragments live in `/libs/api/openapi` (refer via
@@ -137,11 +168,12 @@ must be struct-based.
 
 ------------------------------------------------------------------------
 
-# Build artifacts
+# Build Artifacts
 
 -   All build artifacts go to `services/<svc>/.build` (including
     binaries in `.build/bin`).
 -   Do not create `node_modules` outside `tools/node`.
+-   Ensure `.build` artifacts are ignored via `.gitignore`.
 
 ------------------------------------------------------------------------
 
@@ -154,7 +186,7 @@ must be struct-based.
 
 ------------------------------------------------------------------------
 
-# Output expectations for changes
+# Output Expectations for Changes
 
 -   Keep changes minimal and consistent with existing style.
 -   When adding new code:
@@ -168,7 +200,7 @@ must be struct-based.
 
 ------------------------------------------------------------------------
 
-# When uncertain
+# When Uncertain
 
 -   Ask a clarifying question OR state assumptions explicitly before
     implementing.
