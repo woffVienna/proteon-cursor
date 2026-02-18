@@ -43,7 +43,7 @@ Never the reverse.
 -   May import domain and `libs/platform`.
 -   Must not import adapters or OpenAPI generated types.
 -   Boundary interfaces live in `internal/application/interfaces`.
--   Application services should be struct-based with constructor
+-   Application services must be struct-based with constructor
     functions.
 -   Prefer cohesive service structs with receiver methods over
     standalone functions.
@@ -86,15 +86,17 @@ func (s \*Service) Execute(ctx context.Context, input Input) error { ...
 
 ## Avoid
 
-Function-style orchestration with dependency explosion unless the
-function is truly pure and stateless.
+-   Large standalone functions that pass many dependencies as
+    parameters.
+-   "Function soup" orchestration across layers unless the function is
+    truly pure and stateless.
 
 ## When to use pure functions
 
 -   Domain logic
 -   Stateless mappers
 -   Validation helpers
--   Small utility functions
+-   Small utility helpers
 
 ## When to use struct + methods
 
@@ -104,6 +106,9 @@ function is truly pure and stateless.
 -   Background jobs / schedulers
 -   External clients
 -   Configuration loaders
+
+Application services, repositories, handlers, schedulers, and clients
+must be struct-based.
 
 ------------------------------------------------------------------------
 
