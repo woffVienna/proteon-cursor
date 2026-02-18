@@ -25,7 +25,8 @@ FROM gcr.io/distroless/base-debian12
 
 WORKDIR /app
 COPY --from=builder /out/service /app/service
+COPY --from=builder /repo/services/identity/.build/generated/openapi.bundle.yml /app/.build/generated/openapi.bundle.yml
 
 USER nonroot:nonroot
-EXPOSE 8080
+EXPOSE 8081
 ENTRYPOINT ["/app/service"]

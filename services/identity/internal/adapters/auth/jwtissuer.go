@@ -20,17 +20,23 @@ type JWTIssuer struct {
 
 // NewJWTIssuer creates an Ed25519 JWT issuer.
 // For production, load keys from env/Secrets Manager/KMS.
-func NewJWTIssuer() (*JWTIssuer, error) {
+func NewJWTIssuer(issuer, audience string) (*JWTIssuer, error) {
 	pub, priv, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
 		return nil, err
+	}
+	if issuer == "" {
+		issuer = "proteon.identity"
+	}
+	if audience == "" {
+		audience = "proteon-api"
 	}
 	return &JWTIssuer{
 		kid:        "dev-identity-001",
 		publicKey:  pub,
 		privateKey: priv,
-		issuer:     IssuerFromEnv(),
-		audience:   AudienceFromEnv(),
+		issuer:     issuer,
+		audience:   audience,
 	}, nil
 }
 

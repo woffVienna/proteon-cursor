@@ -103,7 +103,7 @@ IMAGE_NAME ?= $(SERVICE)-service
 IMAGE := $(IMAGE_REPO)/$(IMAGE_NAME):$(IMAGE_TAG)
 
 .PHONY: containerise
-containerise:
+containerise: generate
 	@echo "Building docker image -> $(IMAGE)"
 	@docker build \
 		-f "$(REPO_ROOT)/services/$(SERVICE)/$(DOCKERFILE)" \

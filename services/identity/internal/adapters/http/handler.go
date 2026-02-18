@@ -5,7 +5,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"net/http"
-	"os"
 
 	"github.com/woffVienna/proteon-cursor/libs/platform/httpcommon"
 	"github.com/woffVienna/proteon-cursor/libs/platform/security/jwtverifier"
@@ -17,25 +16,35 @@ import (
 
 // Handler implements server.StrictServerInterface.
 type Handler struct {
-	authSvc  *authapp.Service
-	issuer   interfaces.TokenIssuer
-	verifier *jwtverifier.Verifier
+	authSvc     *authapp.Service
+	issuer      interfaces.TokenIssuer
+	verifier    *jwtverifier.Verifier
+	serviceName string
+	version     string
 }
 
 // NewHandler creates an HTTP handler.
-func NewHandler(authSvc *authapp.Service, issuer interfaces.TokenIssuer, verifier *jwtverifier.Verifier) *Handler {
+func NewHandler(
+	authSvc *authapp.Service,
+	issuer interfaces.TokenIssuer,
+	verifier *jwtverifier.Verifier,
+	serviceName string,
+	version string,
+) *Handler {
 	return &Handler{
-		authSvc:  authSvc,
-		issuer:   issuer,
-		verifier: verifier,
+		authSvc:     authSvc,
+		issuer:      issuer,
+		verifier:    verifier,
+		serviceName: serviceName,
+		version:     version,
 	}
 }
 
 var _ server.StrictServerInterface = (*Handler)(nil)
 
 func (h *Handler) GetV1Health(ctx context.Context, _ server.GetV1HealthRequestObject) (server.GetV1HealthResponseObject, error) {
-	svc := "identity-service"
-	version := os.Getenv("VERSION")
+	svc := h.serviceName
+	version := h.version
 	return server.GetV1Health200JSONResponse(server.HealthResponse{
 		Status:  server.Ok,
 		Service: &svc,

@@ -8,11 +8,12 @@ services:
   identity-service:
     image: proteon/identity-service:dev
     container_name: proteon-identity-service
+    env_file:
+      - ../../services/identity/.env.docker
     environment:
-      DB_DSN: postgres://proteon:proteon@postgres:5432/proteon?sslmode=disable
-      ENV: dev
-      MARKET: AT
-      SERVICE_NAME: identity-service
+      RUNTIME_MODE: docker
+    ports:
+      - "9091:8081"
     networks:
       - proteon
     restart: unless-stopped

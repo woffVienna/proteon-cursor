@@ -4,12 +4,10 @@ import (
 	"crypto/ed25519"
 	"fmt"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/woffVienna/proteon-cursor/libs/platform/httpcommon"
 	"github.com/woffVienna/proteon-cursor/libs/platform/security/jwtverifier"
-	"github.com/woffVienna/proteon-cursor/services/identity/internal/adapters/auth"
 	"github.com/woffVienna/proteon-cursor/services/identity/internal/adapters/http/generated/server"
 	authapp "github.com/woffVienna/proteon-cursor/services/identity/internal/application/auth"
 	"github.com/woffVienna/proteon-cursor/services/identity/internal/application/interfaces"
@@ -22,18 +20,10 @@ import (
 type Config struct {
 	Port              string
 	OpenAPIBundlePath string
-}
-
-// DefaultConfig returns config from env with defaults.
-func DefaultConfig() Config {
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8081"
-	}
-	return Config{
-		Port:              port,
-		OpenAPIBundlePath: ".build/generated/openapi.bundle.yml",
-	}
+	ServiceName       string
+	Version           string
+	JWTIssuer         string
+	JWTAudience       string
 }
 
 // Server is the HTTP adapter.
@@ -45,8 +35,8 @@ type Server struct {
 // NewServer creates an HTTP server with the given dependencies.
 func NewServer(cfg Config, authSvc *authapp.Service, issuer interfaces.TokenIssuer) *Server {
 	verifier := jwtverifier.New(jwtverifier.Config{
-		Issuer:   auth.IssuerFromEnv(),
-		Audience: auth.AudienceFromEnv(),
+		Issuer:   cfg.JWTIssuer,
+		Audience: cfg.JWTAudience,
 		Keys: map[string]ed25519.PublicKey{
 			issuer.Kid(): issuer.PublicKey(),
 		},
@@ -54,7 +44,7 @@ func NewServer(cfg Config, authSvc *authapp.Service, issuer interfaces.TokenIssu
 	})
 	return &Server{
 		cfg:     cfg,
-		handler: NewHandler(authSvc, issuer, verifier),
+		handler: NewHandler(authSvc, issuer, verifier, cfg.ServiceName, cfg.Version),
 	}
 }
 
