@@ -91,3 +91,21 @@ build:
 .PHONY: clean
 clean:
 	@rm -rf $(BUILD_DIR)
+
+# -------- Containerisation --------
+
+IMAGE_REPO ?= proteon
+IMAGE_TAG ?= dev
+DOCKERFILE ?= Dockerfile
+# Keep runtime/build paths based on SERVICE (= folder name), but allow
+# docker image naming to follow deployed service naming.
+IMAGE_NAME ?= $(SERVICE)-service
+IMAGE := $(IMAGE_REPO)/$(IMAGE_NAME):$(IMAGE_TAG)
+
+.PHONY: containerise
+containerise: generate
+	@echo "Building docker image -> $(IMAGE)"
+	@docker build \
+		-f "$(REPO_ROOT)/services/$(SERVICE)/$(DOCKERFILE)" \
+		-t "$(IMAGE)" \
+		"$(REPO_ROOT)"
