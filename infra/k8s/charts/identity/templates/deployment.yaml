@@ -2,7 +2,6 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: identity
-  namespace: {{ .Values.namespace }}
   labels:
     app.kubernetes.io/name: identity
 spec:

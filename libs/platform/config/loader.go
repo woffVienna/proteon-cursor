@@ -7,7 +7,6 @@ import (
 )
 
 type Config[T any] struct {
-	RuntimeMode RuntimeMode
 	ServiceName string
 	Environment string
 	Market      string
@@ -46,12 +45,7 @@ func NewLoader[T any](opts LoaderOptions) Loader[T] {
 }
 
 func (l Loader[T]) Load(parseService ServiceParser[T]) (Config[T], error) {
-	mode, err := RuntimeModeFromEnv()
-	if err != nil {
-		return Config[T]{}, err
-	}
-
-	if err := LoadModeEnvFile(l.opts.WorkingDir, mode); err != nil {
+	if err := LoadLocalEnvFile(l.opts.WorkingDir); err != nil {
 		return Config[T]{}, err
 	}
 
@@ -71,7 +65,6 @@ func (l Loader[T]) Load(parseService ServiceParser[T]) (Config[T], error) {
 	}
 
 	return Config[T]{
-		RuntimeMode: mode,
 		ServiceName: envString("SERVICE_NAME", l.opts.DefaultServiceName),
 		Environment: envString("ENV", l.opts.DefaultEnvironment),
 		Market:      envString("MARKET", l.opts.DefaultMarket),

@@ -38,7 +38,7 @@ func main() {
 	srv := httpadapter.NewServer(httpCfg, authSvc, issuer)
 
 	addr := ":" + cfg.HTTP.Port
-	log.Printf("Identity service listening on %s (%s mode)", addr, cfg.RuntimeMode)
+	log.Printf("Identity service listening on %s", addr)
 	log.Printf("Swagger UI:  %s/swagger", cfg.HTTP.PublicBaseURL)
 	log.Printf("OpenAPI spec: %s/openapi.yaml", cfg.HTTP.PublicBaseURL)
 	log.Printf("starting %s", srv)

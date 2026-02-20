@@ -2,13 +2,11 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: identity-config
-  namespace: {{ .Values.namespace }}
 data:
   SERVICE_NAME: {{ .Values.env.SERVICE_NAME | quote }}
   ENV: {{ .Values.env.ENV | quote }}
   MARKET: {{ .Values.env.MARKET | quote }}
   VERSION: {{ .Values.env.VERSION | quote }}
-  RUNTIME_MODE: {{ .Values.env.RUNTIME_MODE | quote }}
   PORT: {{ .Values.env.PORT | quote }}
   PUBLIC_BASE_URL: {{ .Values.env.PUBLIC_BASE_URL | quote }}
   JWT_ISSUER: {{ .Values.env.JWT_ISSUER | quote }}

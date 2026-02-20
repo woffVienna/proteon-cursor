@@ -101,7 +101,6 @@ make dev
 `dev` contract:
 
 -   Always runs `generate` first
--   Starts with `RUNTIME_MODE=local` by default
 -   Loads `.env.local` through the shared config loader
 -   Runs `go run ./cmd/<service>`
 -   Prevents running with stale OpenAPI stubs
@@ -121,7 +120,7 @@ Example (`services/<service>/.env.local`):
 When running via `go run`:
 
 -   Postgres host is `localhost`
--   Dependencies must be running via Docker
+-   Dependencies must be running (`make deps-install` or `make stack-up`)
 
 ------------------------------------------------------------------------
 
@@ -197,11 +196,13 @@ Stop full stack:
 make stack-down
 ```
 
-Validate local ingress route:
+Validate local ingress health endpoint:
 
 ``` bash
-curl http://localhost:8080/
+curl -i http://localhost:8080/v1/health
 ```
+
+Expected: HTTP 2xx.
 
 ------------------------------------------------------------------------
 
@@ -215,13 +216,19 @@ make containerise
 
 This builds:
 
-    proteon/<service>:dev
+    proteon/<service>-service:dev
 
 Dockerfile location:
 
     services/<service>/Dockerfile
 
 Build context is the repository root.
+
+To build and load the image into k3d for one service:
+
+``` bash
+make image-load SERVICE=identity
+```
 
 `containerise` first runs `generate` so `.build/generated/openapi.bundle.yml`
 exists before image build. Docker runtime image includes this bundled spec so
@@ -252,8 +259,8 @@ Proteon services resolve configuration once at startup from environment.
 
 Shared loader:
 
--   `libs/platform/config/env.go` resolves `RUNTIME_MODE` and loads
-    `.env.<mode>` from the service directory
+-   `libs/platform/config/env.go` loads `.env.local` from the service directory
+    (if present)
 -   `libs/platform/config/loader.go` provides a typed loader with defaults
     for common fields (`ServiceName`, `ENV`, `MARKET`, `VERSION`, `HTTP`)
 -   Each service assembles bespoke typed fields in
@@ -263,13 +270,11 @@ Shared loader:
 
 ## 6.1 Runtime Modes and Env Files
 
-`RUNTIME_MODE` values:
+For host-mode runs (`make run` / `make dev`), use:
 
--   `local`  -> `.env.local`
--   `docker` -> `.env.docker`
--   `cloud`  -> `.env.cloud` (optional; runtime env injection is preferred)
+-   `.env.local`
 
-Key names stay the same across all modes (for example `PORT`, `DB_DSN`,
+Key names stay the same across environments (for example `PORT`, `DB_DSN`,
 `JWT_ISSUER`).
 
 ------------------------------------------------------------------------
@@ -278,8 +283,8 @@ Key names stay the same across all modes (for example `PORT`, `DB_DSN`,
 
 Resolution order per key:
 
-1. Existing process env (shell/docker/cloud injected)
-2. Selected `.env.<mode>` file value
+1. Existing process env
+2. `.env.local` file value
 3. Built-in default (if defined)
 
 Service-specific typed config is parsed into `Config.Service` by the service

@@ -8,36 +8,11 @@ import (
 	"strings"
 )
 
-type RuntimeMode string
-
-const (
-	RuntimeLocal  RuntimeMode = "local"
-	RuntimeDocker RuntimeMode = "docker"
-	RuntimeCloud  RuntimeMode = "cloud"
-)
-
-// RuntimeModeFromEnv resolves runtime mode from RUNTIME_MODE.
-// If unset, it falls back to RuntimeLocal.
-func RuntimeModeFromEnv() (RuntimeMode, error) {
-	mode := strings.ToLower(strings.TrimSpace(os.Getenv("RUNTIME_MODE")))
-	if mode == "" {
-		return RuntimeLocal, nil
-	}
-
-	switch RuntimeMode(mode) {
-	case RuntimeLocal, RuntimeDocker, RuntimeCloud:
-		return RuntimeMode(mode), nil
-	default:
-		return "", fmt.Errorf("invalid RUNTIME_MODE %q (allowed: local|docker|cloud)", mode)
-	}
-}
-
-// LoadModeEnvFile loads .env.<mode> from the given directory.
+// LoadLocalEnvFile loads .env.local from the given directory.
 // Missing files are ignored.
 // Existing process environment values are not overwritten.
-func LoadModeEnvFile(dir string, mode RuntimeMode) error {
-	filename := fmt.Sprintf(".env.%s", mode)
-	path := filepath.Join(dir, filename)
+func LoadLocalEnvFile(dir string) error {
+	path := filepath.Join(dir, ".env.local")
 
 	file, err := os.Open(path)
 	if err != nil {
@@ -78,7 +53,7 @@ func LoadModeEnvFile(dir string, mode RuntimeMode) error {
 			}
 		}
 
-		// Respect values already injected by shell/docker/cloud runtime.
+		// Respect values already injected by runtime environment.
 		if _, exists := os.LookupEnv(key); exists {
 			continue
 		}

@@ -205,7 +205,16 @@ Ignored via `.gitignore`.
 
 ------------------------------------------------------------------------
 
-# 8. Makefile Responsibilities
+# 8. Helm Chart Conventions
+
+-   Service Helm charts live in `infra/k8s/charts/<service>/`.
+-   Use `values.yaml` for defaults and `values-local.yaml` for local overrides.
+-   Namespace is controlled by Helm `--namespace`; do not hardcode
+    `metadata.namespace` in chart templates.
+
+------------------------------------------------------------------------
+
+# 9. Makefile Responsibilities
 
 Root Makefile:
 
@@ -248,7 +257,7 @@ Service Makefile:
 
 ------------------------------------------------------------------------
 
-# 9. Local Development Workflow
+# 10. Local Development Workflow
 
 From repo root:
 
@@ -272,7 +281,7 @@ Do not use docker-compose orchestration in this repository.
 
 ------------------------------------------------------------------------
 
-# 10. CI Contract
+# 11. CI Contract
 
 Minimum CI pipeline:
 
@@ -282,7 +291,7 @@ Minimum CI pipeline:
 
 ------------------------------------------------------------------------
 
-# 11. Git Policy
+# 12. Git Policy
 
 Ignored:
 
@@ -298,7 +307,7 @@ Committed:
 
 ------------------------------------------------------------------------
 
-# 12. Deferred Decisions
+# 13. Deferred Decisions
 
 -   SDK / client codegen location
 -   Cross-service client strategy
