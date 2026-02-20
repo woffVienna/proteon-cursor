@@ -1,0 +1,8 @@
+auth:
+  username: proteon
+  password: proteon
+  database: proteon
+
+primary:
+  persistence:
+    enabled: false

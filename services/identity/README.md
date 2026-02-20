@@ -37,5 +37,6 @@ processes.
 
 ## Docker run
 
-`tools/docker/compose.services.yml` uses `env_file` with
-`services/identity/.env.docker` and sets `RUNTIME_MODE=docker`.
+Kubernetes deployment uses the Helm chart in `infra/k8s/charts/identity`.
+The chart provides the same runtime keys via ConfigMap and sets
+`RUNTIME_MODE=docker`.

@@ -10,6 +10,8 @@ repository.
 -   Follow `/ENGINEERING.md` strictly.
 -   If there is a conflict between a request and ENGINEERING.md, flag it
     and propose an alternative.
+-   Local orchestration standard is k3d + Helm.
+-   docker-compose orchestration is explicitly forbidden.
 
 ------------------------------------------------------------------------
 
@@ -181,7 +183,8 @@ must be struct-based.
 
 -   Node tooling lives under `/tools/node` (Redocly).
 -   Go tools live under `/tools/bin` (oapi-codegen, golangci-lint).
--   Docker assets live under `/tools/docker`.
+-   Local Kubernetes assets live under `/infra/k8s/local`.
+-   Service Helm charts live under `/infra/k8s/charts`.
 -   Prefer Make targets (root and service-level) over ad-hoc commands.
 
 ------------------------------------------------------------------------

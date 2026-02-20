@@ -54,7 +54,6 @@
 !services/*/.env.local
 !services/*/.env.docker
 !services/*/.env.cloud
-docker-compose.override.yml
 
 # ----------------------------
 # Misc

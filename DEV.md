@@ -24,9 +24,11 @@ This will:
 -   Initialize/update `go.work` to include all services and
     `libs/platform`
 
-No manual Docker setup is required.\
-The shared Docker network is created automatically by `make deps-up`,
-`make stack-up`, or `make stack-refresh-up`.
+Prerequisites for local stack orchestration:
+
+-   `k3d`
+-   `kubectl`
+-   `helm`
 
 ------------------------------------------------------------------------
 
@@ -134,43 +136,46 @@ make run
 
 ------------------------------------------------------------------------
 
-# 4. Local Dependencies (Docker)
+# 4. Local Dependencies and Stack (k3d + Helm)
 
-Docker assets are located in:
+Local runtime standard is Kubernetes via k3d.
 
-    tools/docker/
-      compose.deps.yml
-      compose.services.yml
+Core targets:
 
-All containers use a shared Docker network:
+-   `make cluster-up` / `make cluster-down`
+-   `make ns-up` / `make ns-down`
+-   `make deps-install` / `make deps-uninstall`
+-   `make deploy SERVICE=identity`
+-   `make wait-deps` / `make wait-services` / `make wait-ingress`
+-   `make stack-up` / `make stack-down`
 
-    proteon
+Service Helm charts are stored under:
 
-This network is created automatically by Make targets.
+    infra/k8s/charts/<service>/
 
 ------------------------------------------------------------------------
 
 ## 4.1 Start Dependencies Only
 
 ``` bash
-make deps-up
+make deps-install
 ```
 
 This:
 
--   Ensures Docker network exists
--   Starts Postgres
--   Exposes Postgres on `localhost:5432`
+-   Ensures namespace `proteon-dev` exists
+-   Installs Postgres and NATS via Helm
+-   Enables JetStream for NATS
 
 Stop dependencies:
 
 ``` bash
-make deps-down
+make deps-uninstall
 ```
 
 ------------------------------------------------------------------------
 
-## 4.2 Start Full Local Stack (All Services in Containers)
+## 4.2 Start Full Local Stack
 
 ``` bash
 make stack-up
@@ -178,23 +183,24 @@ make stack-up
 
 This runs:
 
-``` bash
-docker compose   -f tools/docker/compose.deps.yml   -f tools/docker/compose.services.yml   up -d
-```
-
-If you changed Dockerfiles or env/config wiring, use:
-
-``` bash
-make stack-refresh-up
-```
-
-This rebuilds all service images (`make containerise` per service) and then
-starts the stack.
+-   k3d cluster provisioning
+-   namespace setup (`proteon-dev`)
+-   Helm dependency install (`postgresql`, `nats`)
+-   dependency readiness checks
+-   service image build + k3d image import
+-   Helm deploy for charted services
+-   deployment + ingress readiness checks
 
 Stop full stack:
 
 ``` bash
 make stack-down
+```
+
+Validate local ingress route:
+
+``` bash
+curl http://localhost:8080/
 ```
 
 ------------------------------------------------------------------------
@@ -225,12 +231,12 @@ exists before image build. Docker runtime image includes this bundled spec so
 
 ## Container Networking Rules
 
-When running inside Docker:
+When running inside Kubernetes:
 
--   Postgres hostname is `postgres`
+-   Postgres hostname is `postgresql`
 -   DSN example:
 
-    postgres://proteon:proteon@postgres:5432/proteon?sslmode=disable
+    postgres://proteon:proteon@postgresql:5432/proteon?sslmode=disable
 
 When running on host (`go run`):
 

@@ -1,0 +1,31 @@
+namespace: proteon-dev
+
+image:
+  repository: proteon/identity-service
+  tag: dev
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 8081
+  targetPort: 8081
+
+ingress:
+  enabled: true
+  className: traefik
+  annotations: {}
+  host: ""
+  path: /
+  pathType: Prefix
+
+env:
+  SERVICE_NAME: identity-service
+  ENV: dev
+  MARKET: AT
+  VERSION: dev
+  RUNTIME_MODE: docker
+  PORT: "8081"
+  PUBLIC_BASE_URL: http://localhost:8080
+  JWT_ISSUER: proteon.identity
+  JWT_AUDIENCE: proteon-api
+  DB_DSN: postgres://proteon:proteon@postgresql:5432/proteon?sslmode=disable

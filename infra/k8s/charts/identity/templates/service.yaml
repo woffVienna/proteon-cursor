@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: identity
+  namespace: {{ .Values.namespace }}
+  labels:
+    app.kubernetes.io/name: identity
+spec:
+  type: {{ .Values.service.type }}
+  selector:
+    app.kubernetes.io/name: identity
+  ports:
+    - name: http
+      port: {{ .Values.service.port }}
+      targetPort: {{ .Values.service.targetPort }}

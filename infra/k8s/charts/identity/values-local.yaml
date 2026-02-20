@@ -1,0 +1,7 @@
+ingress:
+  enabled: true
+
+image:
+  repository: proteon/identity-service
+  tag: dev
+  pullPolicy: IfNotPresent

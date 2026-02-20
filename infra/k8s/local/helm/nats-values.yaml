@@ -1,0 +1,5 @@
+config:
+  jetstream:
+    enabled: true
+
+replicaCount: 1

@@ -190,7 +190,8 @@ Configuration is resolved once at startup.
 
 -   Node tooling: `tools/node/`
 -   Go tooling: `tools/bin/`
--   Docker assets: `tools/docker/`
+-   Local Kubernetes assets: `infra/k8s/local/`
+-   Service Helm charts: `infra/k8s/charts/`
 
 ------------------------------------------------------------------------
 
@@ -220,10 +221,16 @@ Root Makefile:
 -   test
 -   build
 -   clean
--   deps-up
--   deps-down
+-   cluster-up
+-   cluster-down
+-   ns-up
+-   ns-down
+-   deps-install
+-   deps-uninstall
+-   image-load
+-   deploy
+-   deploy-all
 -   stack-up
--   stack-refresh-up
 -   stack-down
 
 Service Makefile:
@@ -248,6 +255,7 @@ From repo root:
     make setup
     make generate
     make test
+    make stack-up
 
 From a service folder:
 
@@ -258,6 +266,9 @@ From a service folder:
 After adding new imports:
 
     go mod tidy
+
+Local runtime standard is k3d + Helm.
+Do not use docker-compose orchestration in this repository.
 
 ------------------------------------------------------------------------
 

@@ -2,6 +2,16 @@ SHELL := /usr/bin/env bash
 .SHELLFLAGS := -euo pipefail -c
 
 REPO_ROOT := $(CURDIR)
+HOST_OS := $(shell uname -s | tr '[:upper:]' '[:lower:]')
+HOST_ARCH_RAW := $(shell uname -m)
+ifeq ($(HOST_ARCH_RAW),x86_64)
+HOST_ARCH := amd64
+else ifeq ($(HOST_ARCH_RAW),aarch64)
+HOST_ARCH := arm64
+else
+HOST_ARCH := $(HOST_ARCH_RAW)
+endif
+HOST_PLATFORM := $(HOST_OS)-$(HOST_ARCH)
 
 # -------- Tooling locations --------
 NODE_TOOLING_DIR := $(REPO_ROOT)/tools/node
@@ -19,6 +29,8 @@ SERVICES := $(shell find $(REPO_ROOT)/services -mindepth 1 -maxdepth 1 -type d -
 help:
 	@echo "Targets:"
 	@echo "  setup            - setup everything for local development"
+	@echo "  check-prereqs    - verify required local stack binaries are installed"
+	@echo "  setup-darwin-arm64-prereqs - install local stack prerequisites on darwin-arm64"
 	@echo "  tooling          - install all tooling (node + go tools)"
 	@echo "  tooling-node     - install node tooling in tools/node"
 	@echo "  tooling-go       - install go tools into tools/bin"
@@ -28,12 +40,51 @@ help:
 	@echo "  test             - run make test in all services"
 	@echo "  build            - run make build in all services"
 	@echo "  clean            - run make clean in all services"
-	@echo "  stack-refresh    - rebuild all service images and start full stack"
+	@echo "  cluster-up       - create local k3d cluster"
+	@echo "  cluster-down     - delete local k3d cluster"
+	@echo "  ns-up            - create kubernetes namespace"
+	@echo "  ns-down          - delete kubernetes namespace"
+	@echo "  deps-install     - install postgres + nats via helm"
+	@echo "  deps-uninstall   - uninstall postgres + nats helm releases"
+	@echo "  image-load       - build image and import into k3d (SERVICE=...)"
+	@echo "  deploy           - deploy service helm chart (SERVICE=...)"
+	@echo "  deploy-all       - deploy all local helm-charted services"
+	@echo "  wait-deps        - wait for postgres + nats readiness"
+	@echo "  wait-services    - wait for service rollout readiness"
+	@echo "  wait-ingress     - wait for local ingress HTTP readiness"
+	@echo "  stack-up         - full local stack bring-up (k3d + helm)"
+	@echo "  stack-down       - uninstall local helm releases"
 
 # -------- Setup (one command) --------
 .PHONY: setup
-setup: tooling work generate
+setup: check-prereqs tooling work generate
 	@echo "Setup complete."
+
+.PHONY: check-prereqs
+check-prereqs:
+	@missing=""; \
+	for cmd in docker k3d kubectl helm curl; do \
+		if ! command -v $$cmd >/dev/null 2>&1; then \
+			missing="$$missing $$cmd"; \
+		fi; \
+	done; \
+	if [[ -n "$$missing" ]]; then \
+		echo "Missing required tools:$$missing"; \
+		echo "Run: make setup-$(HOST_PLATFORM)-prereqs"; \
+		exit 1; \
+	fi
+	@echo "All required local stack prerequisites are installed."
+
+.PHONY: setup-darwin-arm64-prereqs
+setup-darwin-arm64-prereqs:
+	@if ! command -v brew >/dev/null 2>&1; then \
+		echo "Homebrew is required. Install it from https://brew.sh and re-run this target."; \
+		exit 1; \
+	fi
+	@brew install k3d kubectl helm
+	@brew install --cask docker
+	@echo "Installed prerequisites for darwin-arm64."
+	@echo "Start Docker Desktop once (for the Docker daemon): open -a Docker"
 
 # -------- Tooling --------
 .PHONY: tooling
@@ -138,40 +189,138 @@ verify-generated: generate
 .PHONY: check
 check: verify-generated test
 
-# -------- Local docker orchestration (deps + stack) --------
-DOCKER_NETWORK := proteon
-COMPOSE_DEPS_FILE := $(REPO_ROOT)/tools/docker/compose.deps.yml
-COMPOSE_SERVICES_FILE := $(REPO_ROOT)/tools/docker/compose.services.yml
+# -------- Local kubernetes orchestration (k3d + helm) --------
+K3D_CLUSTER_NAME := proteon
+K8S_NAMESPACE := proteon-dev
+K3D_CLUSTER_SCRIPT := $(REPO_ROOT)/infra/k8s/local/k3d/cluster.sh
 
-.PHONY: ensure-network
-ensure-network:
-	@docker network inspect $(DOCKER_NETWORK) >/dev/null 2>&1 || \
-		( echo "Creating docker network '$(DOCKER_NETWORK)'" && docker network create $(DOCKER_NETWORK) >/dev/null )
+HELM_VALUES_DIR := $(REPO_ROOT)/infra/k8s/local/helm
+HELM_CHARTS_DIR := $(REPO_ROOT)/infra/k8s/charts
+POSTGRES_VALUES_FILE := $(HELM_VALUES_DIR)/postgres-values.yaml
+NATS_VALUES_FILE := $(HELM_VALUES_DIR)/nats-values.yaml
 
-.PHONY: deps-up
-deps-up: ensure-network
-	@echo "Starting local dependencies (compose.deps.yml)"
-	@docker compose -f "$(COMPOSE_DEPS_FILE)" up -d
+POSTGRES_RELEASE := postgresql
+NATS_RELEASE := nats
+DEPLOYABLE_SERVICES := identity
 
-.PHONY: deps-down
-deps-down:
-	@echo "Stopping local dependencies (compose.deps.yml)"
-	@docker compose -f "$(COMPOSE_DEPS_FILE)" down
+IMAGE_REPO ?= proteon
+IMAGE_TAG ?= dev
+WAIT_TIMEOUT ?= 180s
+WAIT_RETRY_SECONDS ?= 2
+HEALTHCHECK_URL ?= http://localhost:8080/v1/health
+
+.PHONY: cluster-up
+cluster-up:
+	@bash "$(K3D_CLUSTER_SCRIPT)" up
+
+.PHONY: cluster-down
+cluster-down:
+	@bash "$(K3D_CLUSTER_SCRIPT)" down
+
+.PHONY: ns-up
+ns-up:
+	@kubectl get namespace "$(K8S_NAMESPACE)" >/dev/null 2>&1 || kubectl create namespace "$(K8S_NAMESPACE)"
+
+.PHONY: ns-down
+ns-down:
+	@kubectl delete namespace "$(K8S_NAMESPACE)" --ignore-not-found
+
+.PHONY: deps-install
+deps-install: ns-up
+	@helm repo add bitnami https://charts.bitnami.com/bitnami >/dev/null 2>&1 || true
+	@helm repo add nats https://nats-io.github.io/k8s/helm/charts >/dev/null 2>&1 || true
+	@helm repo update >/dev/null
+	@helm upgrade --install "$(POSTGRES_RELEASE)" bitnami/postgresql \
+		--namespace "$(K8S_NAMESPACE)" \
+		--values "$(POSTGRES_VALUES_FILE)"
+	@helm upgrade --install "$(NATS_RELEASE)" nats/nats \
+		--namespace "$(K8S_NAMESPACE)" \
+		--values "$(NATS_VALUES_FILE)"
+
+.PHONY: deps-uninstall
+deps-uninstall:
+	@helm uninstall "$(POSTGRES_RELEASE)" --namespace "$(K8S_NAMESPACE)" >/dev/null 2>&1 || true
+	@helm uninstall "$(NATS_RELEASE)" --namespace "$(K8S_NAMESPACE)" >/dev/null 2>&1 || true
+
+.PHONY: image-load
+image-load:
+	@if [[ -z "$(SERVICE)" ]]; then \
+		echo "Usage: make image-load SERVICE=<service>"; \
+		exit 1; \
+	fi
+	@if [[ ! -d "$(REPO_ROOT)/services/$(SERVICE)" ]]; then \
+		echo "Unknown service: $(SERVICE)"; \
+		exit 1; \
+	fi
+	@$(MAKE) -C "services/$(SERVICE)" containerise IMAGE_REPO="$(IMAGE_REPO)" IMAGE_TAG="$(IMAGE_TAG)"
+	@k3d image import "$(IMAGE_REPO)/$(SERVICE)-service:$(IMAGE_TAG)" -c "$(K3D_CLUSTER_NAME)"
+
+.PHONY: deploy
+deploy:
+	@if [[ -z "$(SERVICE)" ]]; then \
+		echo "Usage: make deploy SERVICE=<service>"; \
+		exit 1; \
+	fi
+	@if [[ ! -d "$(HELM_CHARTS_DIR)/$(SERVICE)" ]]; then \
+		echo "Helm chart not found for service: $(SERVICE)"; \
+		exit 1; \
+	fi
+	@helm upgrade --install "$(SERVICE)" "$(HELM_CHARTS_DIR)/$(SERVICE)" \
+		--namespace "$(K8S_NAMESPACE)" \
+		--create-namespace \
+		--values "$(HELM_CHARTS_DIR)/$(SERVICE)/values.yaml" \
+		--values "$(HELM_CHARTS_DIR)/$(SERVICE)/values-local.yaml"
+
+.PHONY: deploy-all
+deploy-all:
+	@for s in $(DEPLOYABLE_SERVICES); do \
+		$(MAKE) image-load SERVICE=$$s; \
+		$(MAKE) deploy SERVICE=$$s; \
+	done
+
+.PHONY: wait-deps
+wait-deps:
+	@echo "Waiting for dependency pods to become Ready..."
+	@kubectl wait --namespace "$(K8S_NAMESPACE)" \
+		--for=condition=Ready pod \
+		--selector "app.kubernetes.io/instance=$(POSTGRES_RELEASE)" \
+		--timeout="$(WAIT_TIMEOUT)"
+	@kubectl wait --namespace "$(K8S_NAMESPACE)" \
+		--for=condition=Ready pod \
+		--selector "app.kubernetes.io/instance=$(NATS_RELEASE)" \
+		--timeout="$(WAIT_TIMEOUT)"
+
+.PHONY: wait-services
+wait-services:
+	@for s in $(DEPLOYABLE_SERVICES); do \
+		echo "Waiting for deployment/$$s rollout..."; \
+		kubectl rollout status "deployment/$$s" --namespace "$(K8S_NAMESPACE)" --timeout="$(WAIT_TIMEOUT)"; \
+	done
+
+.PHONY: wait-ingress
+wait-ingress:
+	@echo "Waiting for ingress endpoint $(HEALTHCHECK_URL)..."
+	@attempts=$$(( $(patsubst %s,%,$(WAIT_TIMEOUT)) / $(WAIT_RETRY_SECONDS) )); \
+	if [[ $$attempts -lt 1 ]]; then attempts=1; fi; \
+	last_code="000"; \
+	for i in $$(seq 1 $$attempts); do \
+		http_code=$$(curl --silent --show-error --output /dev/null --write-out "%{http_code}" "$(HEALTHCHECK_URL)" || true); \
+		last_code="$$http_code"; \
+		if [[ "$$http_code" =~ ^2[0-9][0-9]$$ ]]; then \
+			echo "Ingress endpoint is reachable (HTTP $$http_code)."; \
+			exit 0; \
+		fi; \
+		sleep "$(WAIT_RETRY_SECONDS)"; \
+	done; \
+	echo "Timed out waiting for ingress endpoint $(HEALTHCHECK_URL) (last code: $$last_code)"; \
+	exit 1
 
 .PHONY: stack-up
-stack-up: ensure-network
-	@echo "Starting full local stack (deps + services)"
-	@docker compose -f "$(COMPOSE_DEPS_FILE)" -f "$(COMPOSE_SERVICES_FILE)" up -d
-
-.PHONY: stack-refresh-up
-stack-refresh-up:
-	@for s in $(SERVICES); do \
-		echo "==> containerising $$s"; \
-		$(MAKE) -C services/$$s containerise; \
-	done
-	@$(MAKE) stack-up
+stack-up: cluster-up ns-up deps-install wait-deps deploy-all wait-services wait-ingress
 
 .PHONY: stack-down
 stack-down:
-	@echo "Stopping full local stack (deps + services)"
-	@docker compose -f "$(COMPOSE_DEPS_FILE)" -f "$(COMPOSE_SERVICES_FILE)" down
+	@for s in $(DEPLOYABLE_SERVICES); do \
+		helm uninstall $$s --namespace "$(K8S_NAMESPACE)" >/dev/null 2>&1 || true; \
+	done
+	@$(MAKE) deps-uninstall
