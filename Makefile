@@ -4,15 +4,9 @@ SHELL := /usr/bin/env bash
 REPO_ROOT := $(CURDIR)
 
 # -------- Included target groups --------
+include $(REPO_ROOT)/tools/tooling.mk
 include $(REPO_ROOT)/infra/k8s/make/infra.mk
 include $(REPO_ROOT)/infra/k8s/make/prereqs.mk
-
-# -------- Tooling locations --------
-NODE_TOOLING_DIR := $(REPO_ROOT)/tools/node
-TOOLS_BIN := $(REPO_ROOT)/tools/bin
-
-# Ensure locally installed Go tools are picked up
-export PATH := $(TOOLS_BIN):$(PATH)
 
 # -------- Service discovery --------
 # All service directories under services/*
@@ -23,10 +17,6 @@ SERVICES := $(shell find $(REPO_ROOT)/services -mindepth 1 -maxdepth 1 -type d -
 help:
 	@echo "Targets:"
 	@echo "  setup            - setup everything for local development"
-	@echo "  tooling          - install all tooling (node + go tools)"
-	@echo "  tooling-node     - install node tooling in tools/node"
-	@echo "  tooling-go       - install go tools into tools/bin"
-	@echo "  work             - init/update go.work to include all services + libs/platform"
 	@echo "  create-service <name> - create a new service (e.g. make create-service api)"
 	@echo "  generate         - run make generate in all services"
 	@echo "  test             - run make test in all services"
@@ -37,37 +27,12 @@ help:
 
 # -------- Setup (one command) --------
 .PHONY: setup
-setup: check-prereqs tooling work generate
+setup: check-prereqs tooling _work generate
 	@echo "Setup complete."
 
-# -------- Tooling --------
-.PHONY: tooling
-tooling: tooling-node tooling-go
-
-.PHONY: tooling-node
-tooling-node:
-	@if [[ -f "$(NODE_TOOLING_DIR)/package-lock.json" ]]; then \
-		echo "Installing node tooling via npm ci in $(NODE_TOOLING_DIR)"; \
-		( cd "$(NODE_TOOLING_DIR)" && npm ci ); \
-	elif [[ -f "$(NODE_TOOLING_DIR)/package.json" ]]; then \
-		echo "Installing node tooling via npm install in $(NODE_TOOLING_DIR)"; \
-		( cd "$(NODE_TOOLING_DIR)" && npm install ); \
-	else \
-		echo "Error: missing tools/node/package.json at $(NODE_TOOLING_DIR)"; \
-		exit 1; \
-	fi
-
-# Installs Go tools locally (no global installs)
-.PHONY: tooling-go
-tooling-go:
-	@mkdir -p "$(TOOLS_BIN)"
-	@echo "Installing Go tools into $(TOOLS_BIN)"
-	@GOBIN="$(TOOLS_BIN)" go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@latest
-	@GOBIN="$(TOOLS_BIN)" go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
-
 # -------- go.work management --------
-.PHONY: work
-work:
+.PHONY: _work
+_work:
 	@if [[ ! -f "$(REPO_ROOT)/go.work" ]]; then \
 		echo "Initializing go.work"; \
 		go work init; \
@@ -81,6 +46,10 @@ work:
 		go work use ./services/$$s; \
 	done
 	@echo "go.work updated."
+
+# Public alias kept for compatibility with ENGINEERING.md, but hidden from help.
+.PHONY: work
+work: _work
 
 # -------- Service creation --------
 # Usage: make create-service <name>  (e.g. make create-service api)

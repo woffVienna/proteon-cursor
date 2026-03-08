@@ -1,211 +1,221 @@
 # Proteon Cursor Rules
 
-These rules are mandatory for any code generation or refactor in this
-repository.
+These rules define how Cursor should reason about the Proteon monorepo.
 
-------------------------------------------------------------------------
+When making decisions, prefer documented architecture over local code patterns.
 
-# Source of Truth
+## Source of Truth
 
--   Follow `/ENGINEERING.md` strictly.
--   If there is a conflict between a request and ENGINEERING.md, flag it
-    and propose an alternative.
--   Local orchestration standard is k3d + Helm.
--   docker-compose orchestration is explicitly forbidden.
+Always treat these files as the canonical source of truth:
 
-------------------------------------------------------------------------
+- ENGINEERING.md
+- DEV.md
+- docs/architecture/
 
-# Architectural Principles
+If there is a conflict:
+- Prefer docs/architecture/ for architecture intent and constraints
+- Prefer ENGINEERING.md for engineering rules and repository conventions
+- Prefer DEV.md for development workflow and command usage
+- Never silently ignore inconsistencies; call them out explicitly
 
--   Monorepo with independent Go modules per service under
-    `/services/<service>`.
--   NEVER import code from another service (no cross-service imports).
--   Cross-service interaction is via HTTP or events only.
+## Architecture Context Documents
 
-## Shared Libraries (`libs/`)
+Before proposing plans or generating code, consult the architecture
+documents in:
 
--   Services may import `libs/platform`.
--   `libs/platform` must not import any service.
--   `libs/platform` must not contain business logic.
+docs/architecture/
 
-------------------------------------------------------------------------
+Priority documents:
 
-# Layered Clean Architecture (Per Service)
+- docs/architecture/SESSION_BOOTSTRAP.md
+- docs/architecture/ARCHITECTURE_PRINCIPLES.md
+- docs/architecture/ARCHITECTURE_INDEX.md
+- docs/architecture/system/PROTEON_CONTEXT.md
+- docs/architecture/system/DOMAIN_BOUNDARIES.md
+- docs/architecture/system/SHARED_LIBRARIES.md
 
-Enforce strict dependency direction:
+Behavior rules:
 
-adapters → application → domain
+- Treat these documents as the authoritative description of system
+  architecture and constraints
+- Ensure any proposed changes align with these documents
+- If a request conflicts with these documents, flag the conflict and
+  propose an alternative
+- If code appears inconsistent with the architecture documents, call
+  out the inconsistency explicitly
 
-Never the reverse.
+## Architectural Enforcement
 
-## Domain (`internal/domain`)
+Architectural rules are defined in:
 
--   Pure.
--   Standard library only (default).
--   No adapters, no platform, no HTTP/DB/NATS/framework dependencies.
--   Do not import OpenAPI generated types.
--   Prefer pure functions and behavior on domain models.
+- ENGINEERING.md
+- docs/architecture/ARCHITECTURE_PRINCIPLES.md
 
-## Application (`internal/application`)
+The following summaries exist to reinforce enforcement.
 
--   May import domain and `libs/platform`.
--   Must not import adapters or OpenAPI generated types.
--   Boundary interfaces live in `internal/application/interfaces`.
--   Application services must be struct-based with constructor
-    functions.
--   Prefer cohesive service structs with receiver methods over
-    standalone functions.
+### Monorepo and Service Boundaries
 
-## Adapters (`internal/adapters`)
+Proteon is a monorepo containing independent Go services.
 
--   Implement application interfaces.
--   Own mapping between transport/infrastructure types and application
-    DTOs.
--   May import external frameworks (HTTP, DB, NATS, etc.).
--   Use struct-based implementations (e.g. repositories, handlers,
-    clients).
+Each service:
+- lives under `services/<service>/`
+- is its own Go module
+- must not import another service directly
+- communicates with other services via HTTP APIs or asynchronous events only
 
-## Platform (`internal/platform`)
+Cross-service imports are forbidden.
 
--   Technical wiring only (config, health, shutdown, buildinfo).
--   No business logic.
+### Shared Libraries
 
-------------------------------------------------------------------------
+Shared Go code lives under:
 
-# Service Structure Conventions
+- `libs/platform`
 
--   Each service must expose its entrypoint under `cmd/<svc>/main.go`.
--   The `<svc>` name must match the service folder name.
--   Keep canonical internal layout:
-    -   `internal/adapters`
-    -   `internal/application` (including `dto`, `interfaces`,
-        `services`)
-    -   `internal/domain` (including `model`, `rules`)
-    -   `internal/platform`
+Allowed contents include:
+- logging abstractions
+- configuration loading/orchestration
+- error primitives
+- observability helpers
+- middleware and technical cross-cutting helpers
 
-------------------------------------------------------------------------
+Forbidden in `libs/platform`:
+- business logic
+- service-specific logic
+- domain ownership that belongs to a service
+- imports from services
 
-# Coding Style Principles (Mandatory)
+### Internal Service Architecture
 
-## General
+Each service follows this dependency direction:
 
--   Prefer struct-based design with constructor functions and receiver
-    methods.
--   Avoid large standalone functions that pass many dependencies as
-    parameters.
--   Group related behavior inside cohesive types.
+- adapters → application → domain
 
-Example preferred pattern:
+Never reverse this direction.
 
-    type Service struct {
-        repo Repository
-        logger Logger
-    }
+Interpretation:
+- adapters contain transport, persistence, integration, and framework code
+- application contains use cases, orchestration, DTOs, and interfaces
+- domain contains pure business concepts and rules
 
-    func NewService(repo Repository, logger Logger) *Service {
-        return &Service{repo: repo, logger: logger}
-    }
+Domain must remain pure.
 
-    func (s *Service) Execute(ctx context.Context, input Input) error {
-        ...
-    }
+## Coding Style Principles
 
-## Avoid
+Prefer cohesive, struct-based design.
 
--   Large standalone functions that pass many dependencies as
-    parameters.
--   "Function soup" orchestration across layers.
+Preferred pattern:
+- constructor functions
+- receiver methods
+- explicit dependency injection via structs
 
-## When to Use Pure Functions
+Avoid:
+- large standalone functions passing many dependencies
+- orchestration scattered across utility functions
+- mixing responsibilities across architectural layers
 
--   Domain logic
--   Stateless mappers
--   Validation helpers
--   Small utility helpers
-
-## When to Use Struct + Methods
-
--   Application services
--   Repositories
--   HTTP handler sets
--   Background jobs / schedulers
--   External clients
--   Configuration loaders
+Pure functions are appropriate for:
+- domain logic
+- stateless mappers
+- validation helpers
+- small utilities
 
 Application services, repositories, handlers, schedulers, and clients
-must be struct-based.
+should be struct-based.
 
-------------------------------------------------------------------------
+## Configuration Model
 
-# Configuration Model
+Configuration rules are defined in ENGINEERING.md and reinforced by
+docs/architecture/ARCHITECTURE_PRINCIPLES.md.
 
--   CoreConfig:
-    -   Source: environment variables.
-    -   Immutable at runtime.
-    -   Loaded at service startup with fail-fast validation.
-    -   Changes require restart or redeploy.
--   RuntimeConfig:
-    -   Source: Postgres (`service_runtime_settings`).
-    -   Defaults applied first, DB overrides second.
-    -   Validation executed at startup.
-    -   Changes require service restart.
-    -   No live mutation.
--   Configuration is resolved once at startup.
--   Shared configuration loading/orchestration lives in `libs/platform`.
--   Service-specific config structs live in the service.
+Enforce:
 
-------------------------------------------------------------------------
+- configuration is resolved once at startup
+- no live runtime mutation
+- shared configuration loading logic belongs in `libs/platform`
+- service-specific typed configuration belongs inside each service
+- fail fast on invalid configuration
 
-# OpenAPI & Code Generation
+If a change suggests runtime mutation or ad-hoc config access patterns,
+flag it.
 
--   OpenAPI source lives in `services/<svc>/api/openapi.yml`.
--   Shared OpenAPI fragments live in `/libs/api/openapi` (refer via
-    `$ref`).
--   Bundle output goes into:
-    `services/<svc>/.build/generated/openapi.bundle.yml` and is NOT
-    committed.
--   Generated Go server stubs go into:
-    `services/<svc>/internal/adapters/http/generated/server/openapi.gen.go`.
--   Generated Go code IS committed.
+## OpenAPI and Code Generation
 
-------------------------------------------------------------------------
+Treat OpenAPI as source-first.
 
-# Build Artifacts
+Rules:
+- `api/openapi.yml` is the source of truth
+- shared schemas live in `libs/api/openapi/`
+- bundled spec is generated into `.build/generated/openapi.bundle.yml`
+- generated server code is committed where defined by repository conventions
 
--   All build artifacts go to `services/<svc>/.build` (including
-    binaries in `.build/bin`).
--   Do not create `node_modules` outside `tools/node`.
--   Ensure `.build` artifacts are ignored via `.gitignore`.
+When relevant:
+- prefer existing generation workflow over ad-hoc generation
+- do not hand-edit generated files unless explicitly required
+- if generated files are stale, say so
 
-------------------------------------------------------------------------
+## Build and Tooling Awareness
 
-# Tooling
+Repository tooling conventions:
+- Node tooling lives in `tools/node/`
+- Go tooling lives in `tools/bin/`
+- local Kubernetes assets live under `infra/k8s/`
+- service Helm charts live under `infra/k8s/charts/<service>/`
 
--   Node tooling lives under `/tools/node` (Redocly).
--   Go tools live under `/tools/bin` (oapi-codegen, golangci-lint).
--   Local Kubernetes assets live under `/infra/k8s/local`.
--   Service Helm charts live under `/infra/k8s/charts`.
--   Prefer Make targets (root and service-level) over ad-hoc commands.
+Local development standard:
+- k3d + Helm
+- do not introduce docker-compose orchestration unless explicitly requested
 
-------------------------------------------------------------------------
+## Build Artifacts and Git Hygiene
 
-# Output Expectations for Changes
+Build artifacts live under `.build/` and are ignored.
 
--   Keep changes minimal and consistent with existing style.
--   When adding new code:
-    -   Place it in the correct layer.
-    -   Add necessary wiring in `cmd/<svc>/main.go` only.
--   If generated code requires new Go deps:
-    -   Ensure module is tidy (`go mod tidy`).
-    -   Ensure build remains green.
--   Do not introduce new layers, patterns, or architectural concepts
-    unless explicitly requested.
+Do not:
+- rely on committed `.build/` outputs
+- propose committing ignored build artifacts
+- introduce workflows that depend on transient local files
 
-------------------------------------------------------------------------
+## Planning Discipline
 
-# When Uncertain
+For non-trivial changes:
 
--   Ask a clarifying question OR state assumptions explicitly before
-    implementing.
--   Never invent new repo structure, naming conventions, or layers not
-    present in ENGINEERING.md.
+1. Review relevant documents in `docs/architecture/`
+2. Produce a bounded plan aligned with the architecture
+3. Apply changes incrementally
+
+Avoid large repository-wide refactors unless explicitly requested.
+
+Prefer:
+- changes scoped to one service
+- minimal diffs
+- preserving existing patterns
+- one architectural step at a time
+
+For larger work, do not jump directly into broad edits without first
+aligning with the documented architecture.
+
+## Documentation Synchronization
+
+When a change materially affects architecture, check whether
+documentation updates are required in:
+
+- docs/architecture/
+
+Examples:
+- service boundaries change
+- new shared library responsibilities
+- configuration model changes
+- event flow changes
+- engineering workflow changes
+
+If documentation updates are needed, propose them as part of the plan.
+
+## Output Expectations
+
+When responding to architecture or refactor requests:
+
+- align with repository conventions
+- prefer minimal, consistent changes
+- do not invent new patterns if an established pattern already exists
+- explain architectural conflicts explicitly
+- for non-trivial work, provide a short bounded plan before editing
+- mention relevant documentation files when they influenced the plan
