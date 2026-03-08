@@ -24,7 +24,7 @@ fi
 echo "Copying all .md files from docs/architecture/ into a flat folder..."
 mkdir -p "$OUTPUT_DIR"
 
-find "$ARCH_DIR" -name '*.md' -type f | while read -r file; do
+find "$ARCH_DIR" -name '*.md' -type f -not -path '*/gpt/*' | while read -r file; do
   basename="$(basename "$file")"
 
   if [ -e "$OUTPUT_DIR/$basename" ]; then
