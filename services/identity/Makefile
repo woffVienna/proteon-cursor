@@ -21,7 +21,11 @@ OPENAPI_BUNDLE := $(GEN_DIR)/openapi.bundle.yml
 HTTP_GEN_DIR := internal/adapters/http/generated/server
 HTTP_GEN_FILE := $(HTTP_GEN_DIR)/openapi.gen.go
 
+CONTRACT_HTTP_DIR := $(REPO_ROOT)/contracts/http/identity
+CONTRACT_CLIENT_FILE := $(CONTRACT_HTTP_DIR)/client.gen.go
+
 OAPI_SERVER_CFG := $(API_DIR)/oapi-codegen.server.yml
+OAPI_CLIENT_CFG := $(API_DIR)/oapi-codegen.client.yml
 
 .PHONY: help
 help:
@@ -45,7 +49,7 @@ lint:
 	fi
 
 .PHONY: generate
-generate: $(HTTP_GEN_FILE)
+generate: $(HTTP_GEN_FILE) $(CONTRACT_CLIENT_FILE)
 
 $(OPENAPI_BUNDLE): $(OPENAPI_SRC)
 	@mkdir -p $(GEN_DIR)
@@ -68,6 +72,16 @@ $(HTTP_GEN_FILE): $(OPENAPI_BUNDLE) $(OAPI_SERVER_CFG)
 	else \
 		echo "Error: oapi-codegen not installed."; \
 		echo "Install: go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@latest"; \
+		exit 1; \
+	fi
+
+$(CONTRACT_CLIENT_FILE): $(OPENAPI_BUNDLE) $(OAPI_CLIENT_CFG)
+	@mkdir -p $(CONTRACT_HTTP_DIR)
+	@if command -v $(OAPI_CODEGEN) >/dev/null 2>&1; then \
+		echo "Generating HTTP client -> $(CONTRACT_CLIENT_FILE)"; \
+		$(OAPI_CODEGEN) -config $(OAPI_CLIENT_CFG) $(OPENAPI_BUNDLE); \
+	else \
+		echo "Error: oapi-codegen not installed."; \
 		exit 1; \
 	fi
 

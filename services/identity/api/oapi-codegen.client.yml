@@ -1,0 +1,9 @@
+# Generated HTTP client for identity service. Output lives under contracts/http/identity/
+# so other services can import it without depending on the identity service.
+# Regenerate via: make generate (from identity) or make generate (from repo root).
+package: identity
+output: ../../contracts/http/identity/client.gen.go
+
+generate:
+  client: true
+  models: true
