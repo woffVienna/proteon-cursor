@@ -25,14 +25,23 @@ documents in:
 
 docs/architecture/
 
-Priority documents:
+Recommended reading order:
 
-- docs/architecture/SESSION_BOOTSTRAP.md
-- docs/architecture/ARCHITECTURE_PRINCIPLES.md
-- docs/architecture/ARCHITECTURE_INDEX.md
-- docs/architecture/system/PROTEON_CONTEXT.md
+- docs/architecture/00_CONTEXT.md
+- docs/architecture/01_PRINCIPLES.md
+- docs/architecture/02_WORKFLOW.md
+- docs/architecture/03_INDEX.md
+
+Topic-specific documents:
+
 - docs/architecture/system/DOMAIN_BOUNDARIES.md
 - docs/architecture/system/SHARED_LIBRARIES.md
+- docs/architecture/system/INTEGRATION_CONTRACTS.md
+- docs/architecture/system/CONTRACT_GOVERNANCE.md
+- docs/architecture/system/EVENT_MODEL.md
+- docs/architecture/system/EVENT_OPERATIONS.md
+- docs/architecture/system/SERVICE_TYPES.md
+- docs/architecture/system/API_GATEWAY.md
 
 Behavior rules:
 
@@ -46,10 +55,11 @@ Behavior rules:
 
 ## Architectural Enforcement
 
-Architectural rules are defined in:
+Architectural rules are primarily defined in docs/architecture/ and
+reinforced here. Key documents:
 
-- ENGINEERING.md
-- docs/architecture/ARCHITECTURE_PRINCIPLES.md
+- docs/architecture/01_PRINCIPLES.md
+- ENGINEERING.md (repository structure and conventions)
 
 The following summaries exist to reinforce enforcement.
 
@@ -82,6 +92,7 @@ Forbidden in `libs/platform`:
 - business logic
 - service-specific logic
 - domain ownership that belongs to a service
+- service-owned contracts (use `contracts/` for integration artifacts)
 - imports from services
 
 ### Internal Service Architecture
@@ -93,7 +104,8 @@ Each service follows this dependency direction:
 Never reverse this direction.
 
 Interpretation:
-- adapters contain transport, persistence, integration, and framework code
+- adapters contain transport, persistence, messaging, generated server code,
+  and framework code
 - application contains use cases, orchestration, DTOs, and interfaces
 - domain contains pure business concepts and rules
 
@@ -125,7 +137,7 @@ should be struct-based.
 ## Configuration Model
 
 Configuration rules are defined in ENGINEERING.md and reinforced by
-docs/architecture/ARCHITECTURE_PRINCIPLES.md.
+docs/architecture/01_PRINCIPLES.md.
 
 Enforce:
 
@@ -140,26 +152,29 @@ flag it.
 
 ## OpenAPI and Code Generation
 
-Treat OpenAPI as source-first.
+Treat OpenAPI as source-first. Architecture source of truth is
+docs/architecture/ (see INTEGRATION_CONTRACTS.md).
 
 Rules:
-- `api/openapi.yml` is the source of truth
-- shared schemas live in `libs/api/openapi/`
-- bundled spec is generated into `.build/generated/openapi.bundle.yml`
-- generated server code is committed where defined by repository conventions
-
-When relevant:
-- prefer existing generation workflow over ad-hoc generation
-- do not hand-edit generated files unless explicitly required
-- if generated files are stale, say so
+- Each service owns its API: `services/<service>/api/openapi.yml` is the
+  source of truth for that service
+- Shared schemas may live in `libs/api/openapi/`
+- Generated server code lives inside the service, e.g.
+  `internal/adapters/http/generated/server/`
+- Shared HTTP client artifacts for consumers go under
+  `contracts/http/<service>/` when used
+- Bundled spec may be generated into `.build/generated/openapi.bundle.yml`
+- Prefer existing generation workflow over ad-hoc generation
+- Do not hand-edit generated files unless explicitly required
+- If generated files are stale, say so
 
 ## Build and Tooling Awareness
 
 Repository tooling conventions:
 - Node tooling lives in `tools/node/`
 - Go tooling lives in `tools/bin/`
-- local Kubernetes assets live under `infra/k8s/`
-- service Helm charts live under `infra/k8s/charts/<service>/`
+- Local Kubernetes assets live under `infra/k8s/local/`
+- Service Helm charts live under `infra/k8s/charts/<service>/`
 
 Local development standard:
 - k3d + Helm
@@ -202,9 +217,10 @@ documentation updates are required in:
 
 Examples:
 - service boundaries change
-- new shared library responsibilities
-- configuration model changes
-- event flow changes
+- shared library responsibilities change
+- contract ownership or generation changes
+- event model or event operations change
+- gateway or configuration model changes
 - engineering workflow changes
 
 If documentation updates are needed, propose them as part of the plan.

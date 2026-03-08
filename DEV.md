@@ -42,7 +42,7 @@ make generate
 
 Use this after:
 
--   Modifying `api/openapi.yml`
+-   Modifying `services/<service>/api/openapi.yml`
 -   Changing shared schemas in `libs/api/openapi`
 
 ------------------------------------------------------------------------
@@ -351,8 +351,9 @@ Expectations:
 
 All code must follow:
 
--   `ENGINEERING.md`
--   `.cursorrules`
+-   `docs/architecture/` (source of truth for architecture intent and constraints)
+-   `ENGINEERING.md` (repository structure and conventions)
+-   `.cursorrules` (Cursor execution guardrails)
 
 In particular:
 
@@ -365,4 +366,4 @@ In particular:
 ------------------------------------------------------------------------
 
 This document describes the golden path.\
-If you need to deviate, update `ENGINEERING.md` accordingly.
+If you need to deviate, update `ENGINEERING.md` or the relevant document in `docs/architecture/` accordingly.

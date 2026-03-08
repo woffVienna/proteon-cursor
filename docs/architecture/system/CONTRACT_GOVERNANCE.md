@@ -18,36 +18,12 @@ These contracts include:
 - HTTP API contracts
 - event contracts
 
-Because contracts are shared across service boundaries, changes to them
-must be governed carefully.
-
-The goals of contract governance are:
-
-- preserve explicit ownership
-- make contract changes visible
-- prevent accidental breaking changes
-- support independent service evolution
-- reduce integration drift across the monorepo
+Because contracts are shared across service boundaries, changes to them must
+be governed carefully.
 
 ------------------------------------------------------------------------
 
-# 2. Scope
-
-This document applies to:
-
-- service OpenAPI specifications
-- generated shared HTTP client artifacts
-- canonical event schemas
-- versioned contract artifacts under `contracts/`
-
-This document does not redefine the basic structure of `contracts/`.
-That is defined in `INTEGRATION_CONTRACTS.md`.
-
-------------------------------------------------------------------------
-
-# 3. Ownership Model
-
-## 3.1 Service Ownership
+# 2. Ownership Model
 
 A service owns the semantics of its contracts.
 
@@ -57,34 +33,24 @@ This includes:
 - the events it publishes
 - the meaning of its request, response, and event payloads
 
-Ownership remains with the service even when generated or shared
-artifacts are published into `contracts/`.
-
-## 3.2 Source of Truth
-
 For HTTP APIs, the source of truth is:
 
-```
-services/<service>/api/openapi.yml
-```
+`services/<service>/api/openapi.yml`
 
 For events, the source of truth is the canonical event contract and its
-producing service’s defined semantics, published under:
+producing service’s semantics, published under:
 
-```
-contracts/events/<service-or-domain>/
-```
+`contracts/events/<service-or-domain>/`
 
 Consumers do not own producer contracts.
 
 ------------------------------------------------------------------------
 
-# 4. Change Visibility
+# 3. Change Visibility
 
 Contract changes must be treated as explicit interface changes.
 
-A contract change must never be hidden inside unrelated implementation
-work.
+A contract change must never be hidden inside unrelated implementation work.
 
 Changes to the following must be visible and reviewable:
 
@@ -95,14 +61,9 @@ Changes to the following must be visible and reviewable:
 - deprecations
 - removals
 
-Contract changes should be easy to identify in pull requests and
-architecture discussions.
-
 ------------------------------------------------------------------------
 
-# 5. Versioning Principles
-
-Versioning exists to manage change safely across service boundaries.
+# 4. Versioning Principles
 
 General principles:
 
@@ -113,19 +74,17 @@ General principles:
 
 ------------------------------------------------------------------------
 
-# 6. HTTP Contract Governance
+# 5. HTTP Contract Governance
 
-## 6.1 Preferred Change Style
+Prefer additive changes where possible.
 
-For HTTP APIs, prefer additive changes where possible.
-
-Examples of typically compatible changes:
+Typically compatible changes:
 
 - adding optional fields to responses
 - adding new endpoints
 - adding optional request parameters where safe
 
-Examples of potentially breaking changes:
+Potentially breaking changes:
 
 - removing fields
 - renaming fields
@@ -134,28 +93,13 @@ Examples of potentially breaking changes:
 - changing response shape incompatibly
 - removing endpoints
 
-Breaking changes must be deliberate and visible.
-
-## 6.2 Generated Client Artifacts
-
-Generated shared client artifacts under:
-
-```
-contracts/http/<service>/
-```
-
-must be regenerated from the service-owned OpenAPI specification.
-
-Shared client artifacts must not be manually edited.
-
-The generated output is a derived contract artifact, not an independent
-source of truth.
+Generated shared client artifacts under `contracts/http/<service>/` must be
+regenerated from the service-owned OpenAPI specification and must not be
+edited by hand.
 
 ------------------------------------------------------------------------
 
-# 7. Event Contract Governance
-
-## 7.1 Event Compatibility
+# 6. Event Contract Governance
 
 Event contracts should be evolved conservatively.
 
@@ -171,25 +115,18 @@ Breaking changes include:
 - changing payload structure incompatibly
 - reusing an existing event name for a different semantic meaning
 
-## 7.2 Explicit Event Versioning
-
 When an event changes incompatibly, publish a new version.
 
 Example:
 
-```
-user-created.v1.json
-user-created.v2.json
-```
+- `user-created.v1.json`
+- `user-created.v2.json`
 
 Do not silently replace the meaning of an existing event version.
 
-If compatibility matters for multiple consumers, old and new versions may
-need to coexist during a transition period.
-
 ------------------------------------------------------------------------
 
-# 8. Breaking Change Policy
+# 7. Breaking Change Policy
 
 Breaking changes are allowed only when they are:
 
@@ -198,10 +135,7 @@ Breaking changes are allowed only when they are:
 - visible
 - coordinated with affected consumers where necessary
 
-Breaking changes must not be introduced accidentally through routine
-refactoring.
-
-When a breaking change is required, the preferred approach is one of:
+Preferred approaches:
 
 - introduce a new version
 - add a parallel endpoint or event version
@@ -210,7 +144,7 @@ When a breaking change is required, the preferred approach is one of:
 
 ------------------------------------------------------------------------
 
-# 9. Deprecation Policy
+# 8. Deprecation Policy
 
 Deprecation should be explicit and time-bounded where relevant.
 
@@ -221,15 +155,9 @@ A deprecation should identify:
 - whether migration is required
 - when removal is expected, if known
 
-Deprecation allows consumers to move in a controlled way rather than
-absorbing sudden breakage.
-
 ------------------------------------------------------------------------
 
-# 10. Consumer Expectations
-
-Consumers are responsible for integrating against explicit contracts, not
-producer internals.
+# 9. Consumer Expectations
 
 Consumers must:
 
@@ -247,58 +175,7 @@ Consumers must not:
 
 ------------------------------------------------------------------------
 
-# 11. Review Expectations
-
-Contract changes should receive a higher level of scrutiny than purely
-internal implementation changes.
-
-Reviewers should assess:
-
-- ownership clarity
-- backward compatibility
-- downstream impact
-- versioning correctness
-- whether a new version is required
-- whether deprecation should be introduced
-
-For non-trivial contract changes, the architectural intent should be
-reflected in `docs/architecture/` where appropriate.
-
-------------------------------------------------------------------------
-
-# 12. Generation Discipline
-
-Contract generation must remain deterministic and standardized.
-
-Rules:
-
-- generate from the canonical source of truth
-- do not hand-edit generated artifacts
-- keep generation wired into normal workflows
-- ensure generated outputs stay aligned with source contracts
-
-This protects the repository from contract drift.
-
-------------------------------------------------------------------------
-
-# 13. Governance Boundaries
-
-`libs/platform` must not become a home for service-owned contracts.
-
-Contract governance applies to:
-
-```
-services/<service>/api/openapi.yml
-contracts/http/...
-contracts/events/...
-```
-
-It does not change the rule that `libs/platform` is reserved for
-technical cross-cutting concerns only.
-
-------------------------------------------------------------------------
-
-# 14. Summary
+# 10. Summary
 
 Proteon standardizes the following contract governance rules:
 
@@ -310,6 +187,3 @@ Proteon standardizes the following contract governance rules:
 - incompatible event changes require versioning
 - generated artifacts must be derived, not hand-maintained
 - consumers depend on contracts, not service internals
-
-These rules are intended to keep service integration explicit, safe, and
-evolvable as the platform grows.

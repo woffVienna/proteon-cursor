@@ -1,8 +1,10 @@
 # Domain Boundaries
 
-This document defines the intended domain and ownership boundaries in Proteon.
+This document defines service ownership boundaries in Proteon.
 
-## Primary Boundary
+------------------------------------------------------------------------
+
+# 1. Primary Boundary
 
 The primary boundary in Proteon is the service boundary.
 
@@ -10,10 +12,13 @@ Each service owns:
 
 - its domain logic
 - its application orchestration
-- its persistence rules
-- its API/event contract
+- its persistence
+- its HTTP API semantics
+- the events it publishes
 
-## Forbidden Coupling
+------------------------------------------------------------------------
+
+# 2. Forbidden Coupling
 
 Services must not couple through:
 
@@ -21,30 +26,50 @@ Services must not couple through:
 - shared service-owned database access
 - leaking internal implementation types
 - hidden runtime assumptions
+- treating another service’s contracts as shared domain models
 
-## Allowed Integration Styles
+------------------------------------------------------------------------
 
-Services integrate through:
+# 3. Allowed Integration Styles
+
+Services integrate through explicit boundaries only:
 
 - HTTP APIs
 - asynchronous events
 
-These boundaries must remain explicit.
+These boundaries must remain contractual and visible.
 
-## Internal Layer Boundaries
+------------------------------------------------------------------------
+
+# 4. Internal Layer Boundaries
 
 Within a service:
 
 - adapters depend on application
 - application depends on domain
-- domain depends on nothing inward from outer layers
+- domain depends on nothing from outer layers
 
-## Shared Technical Code Boundary
+Boundary discipline applies both across services and inside services.
 
-`libs/platform` may support services technically but does not own domain behavior.
+------------------------------------------------------------------------
 
-It must not become a place where service/business behavior is centralized.
+# 5. Boundary Ownership Rule
 
-## Boundary Change Rule
+A service is the authoritative owner of its domain behaviour.
 
-If a proposed change alters service ownership or responsibility, it should be treated as an architectural change and documented explicitly.
+A service must not:
+
+- read or write another service’s data store directly
+- centralize another service’s business rules
+- rely on another service’s internal package structure
+- hide coupling in shared libraries
+
+------------------------------------------------------------------------
+
+# 6. Boundary Change Rule
+
+If a proposed change alters service ownership, service responsibilities, or
+cross-service dependency direction, it should be treated as an architectural
+change and documented explicitly.
+
+Use an architecture brief or ADR when the change is material.

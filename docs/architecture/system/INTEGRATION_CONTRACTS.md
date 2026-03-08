@@ -16,7 +16,7 @@ It complements the core architecture documents by specifying the rules for:
 
 Proteon is a monorepo containing independent services.
 
-Services must **never import each other directly**. Integration between
+Services must never import each other directly. Integration between
 services must occur through explicit boundaries only:
 
 - HTTP APIs
@@ -24,11 +24,9 @@ services must occur through explicit boundaries only:
 
 To support this cleanly, Proteon uses a dedicated top-level directory:
 
-```
-contracts/
-```
+`contracts/`
 
-This directory contains reusable **integration artifacts** derived from
+This directory contains reusable integration artifacts derived from
 service-owned contracts.
 
 This approach ensures:
@@ -46,9 +44,7 @@ Proteon uses three clearly separated layers of code ownership.
 
 ## 2.1 Services
 
-```
-services/
-```
+`services/`
 
 Services contain:
 
@@ -58,15 +54,13 @@ Services contain:
 - API definitions
 - event producers
 
-Services **own the meaning of their APIs and events**.
+Services own the meaning of their APIs and events.
 
 ## 2.2 Platform Library
 
-```
-libs/platform
-```
+`libs/platform`
 
-`libs/platform` is reserved for **technical cross-cutting concerns**.
+`libs/platform` is reserved for technical cross-cutting concerns.
 
 Allowed responsibilities include:
 
@@ -85,15 +79,13 @@ Forbidden responsibilities include:
 
 ## 2.3 Contracts
 
-```
-contracts/
-```
+`contracts/`
 
-The `contracts/` directory contains **shared integration artifacts**
-derived from service-owned contracts.
+The `contracts/` directory contains shared integration artifacts derived from
+service-owned contracts.
 
-These artifacts exist only to allow other services to integrate with
-a service **without importing its code**.
+These artifacts exist only to allow other services to integrate with a
+service without importing its code.
 
 ------------------------------------------------------------------------
 
@@ -101,38 +93,28 @@ a service **without importing its code**.
 
 The `contracts/` directory contains two main categories.
 
-```
-contracts/
-  http/
-  events/
-```
+`contracts/http/`
+`contracts/events/`
 
 ## 3.1 HTTP Contracts
 
-```
-contracts/http/<service>/
-```
+`contracts/http/<service>/`
 
-Contains **generated client artifacts** derived from a service’s
-OpenAPI specification.
+Contains generated client artifacts derived from a service’s OpenAPI
+specification.
 
 Typical contents include:
 
 - generated HTTP clients
-- generated request/response models
+- generated request and response models
 - supporting generated types
-
-These artifacts allow other services to call the service without
-importing its internal code.
 
 ## 3.2 Event Contracts
 
-```
-contracts/events/<service-or-domain>/
-```
+`contracts/events/<service-or-domain>/`
 
-Contains canonical **event schemas** and optionally generated bindings
-for event payloads.
+Contains canonical event schemas and optionally generated bindings for event
+payloads.
 
 Typical contents include:
 
@@ -140,169 +122,60 @@ Typical contents include:
 - optional generated Go bindings
 - schema metadata
 
-These artifacts allow services to publish and consume events using a
-shared, explicit contract.
-
 ------------------------------------------------------------------------
 
-# 4. HTTP Contract Model
+# 4. HTTP Contract Flow
 
-Proteon uses an **OpenAPI-first model** for HTTP APIs.
+Each service owns its API specification at:
 
-## 4.1 API Ownership
+`services/<service>/api/openapi.yml`
 
-Each service owns its API specification:
-
-```
-services/<service>/api/openapi.yml
-```
-
-This file is the **source of truth** for the service HTTP interface.
-
-## 4.2 Generated Server Code
-
-Server code generated from the OpenAPI specification belongs inside
-the service adapters layer.
+Generated server code belongs inside the service adapters layer.
 
 Example:
 
-```
-services/<service>/internal/adapters/http/generated/server/openapi.gen.go
-```
+`services/<service>/internal/adapters/http/generated/server/openapi.gen.go`
 
-This keeps transport concerns isolated in adapters.
+Generated shared client artifacts for other services are produced under:
 
-## 4.3 Generated Shared Client Contracts
+`contracts/http/<service>/`
 
-Client artifacts for other services are generated into:
+Consumption rules:
 
-```
-contracts/http/<service>/
-```
-
-These artifacts are generated from the service OpenAPI specification.
-
-They allow consuming services to call the API **without importing
-service code**.
-
-## 4.4 Consumption Rules
-
-Consuming services may import:
-
-```
-contracts/http/<service>
-```
-
-But must never import:
-
-```
-services/<service>/...
-```
-
-Generated HTTP clients may only be used inside the **adapters layer**
-of the consuming service.
-
-## 4.5 Mapping Rule
-
-Generated request/response models are **integration contract types**.
-
-They must **not be treated as domain models**.
-
-Services must map integration types into their own application or
-domain types where appropriate.
+- consuming services may import `contracts/http/<service>`
+- consuming services must never import `services/<service>/...`
+- generated HTTP clients may only be used in adapters
+- integration models must be mapped into service-local models before use
 
 ------------------------------------------------------------------------
 
-# 5. Event Contract Model
+# 5. Event Contract Flow
 
-Proteon uses **domain events** and **event choreography** as the default
-model for asynchronous integration.
+Proteon uses domain events and event choreography as the default model for
+asynchronous integration.
 
-## 5.1 Event Naming
+Event names should represent meaningful domain facts, for example:
 
-Events must represent meaningful domain facts.
+- `identity.user.created`
+- `identity.user.deleted`
+- `matchmaking.match.created`
 
-Examples:
+Canonical reusable event contracts live under:
 
-```
-identity.user.created
-identity.user.deleted
-matchmaking.match.created
-```
+`contracts/events/<service-or-domain>/`
 
-Avoid generic stream names that hide domain meaning.
+Producers publish according to the canonical schema.
 
-## 5.2 Canonical Event Schemas
+Consumers depend on explicit event contract artifacts, not on producer
+internal packages.
 
-Reusable event schemas are stored under:
-
-```
-contracts/events/<service-or-domain>/
-```
-
-Example:
-
-```
-contracts/events/identity/user-created.v1.json
-```
-
-Schemas may be defined using JSON Schema or another agreed format.
-
-Generated language bindings may be added if useful.
-
-## 5.3 Producer Rule
-
-The producing service publishes events according to the canonical schema.
-
-The producing service **owns the event semantics and version lifecycle**.
-
-## 5.4 Consumer Rule
-
-Consumers depend on the explicit event contract artifact in `contracts/`.
-
-Consumers must **not import producer internal code**.
-
-Event payloads must be mapped into service-local application or domain
-models before use.
-
-Event payloads are **integration contracts, not shared domain models**.
+Event payloads are integration contracts, not shared domain models.
 
 ------------------------------------------------------------------------
 
-# 6. Event Choreography
+# 6. Dependency Rules
 
-Proteon defaults to **event choreography** for cross-service workflows.
-
-Example flow:
-
-```
-identity.user.created
-        ↓
-profile-service reacts
-        ↓
-notification-service reacts
-```
-
-Each service reacts independently.
-
-There is **no central coordinator**.
-
-This model supports:
-
-- loose coupling
-- independent service evolution
-- simpler service boundaries
-
-Explicit orchestration services may be introduced only where a
-business workflow requires central coordination.
-
-------------------------------------------------------------------------
-
-# 7. Dependency Rules
-
-## 7.1 Forbidden Dependencies
-
-The following are prohibited:
+Forbidden:
 
 - importing one service from another service
 - storing service-owned contracts inside `libs/platform`
@@ -310,140 +183,40 @@ The following are prohibited:
 - leaking transport types into domain
 - accessing another service’s database
 
-## 7.2 Allowed Dependencies
-
-Allowed examples include:
+Allowed:
 
 - services importing `contracts/http/<service>`
 - services importing event bindings from `contracts/events/...`
 - services importing `libs/platform` for technical concerns
 
-## 7.3 Layering Rules
+Within a service, contract usage must respect:
 
-Within a service, contract usage must respect service layering:
-
-```
-adapters → application → domain
-```
-
-Implications:
-
-- HTTP clients live in adapters
-- event consumers/producers live in adapters
-- mapping into application/domain models happens before business logic
-- domain remains framework and contract independent
+`adapters -> application -> domain`
 
 ------------------------------------------------------------------------
 
-# 8. Generation Model
+# 7. Generation Model
 
-Integration contracts are generated as part of service development
-workflows.
+Integration contracts are generated as part of service development workflows.
 
 Generation runs from the service `make generate` process.
 
-## 8.1 HTTP Generation
-
 From:
 
-```
-services/<service>/api/openapi.yml
-```
+`services/<service>/api/openapi.yml`
 
 Generate:
 
-```
-services/<service>/internal/adapters/http/generated/server/
-contracts/http/<service>/
-```
+- `services/<service>/internal/adapters/http/generated/server/`
+- `contracts/http/<service>/`
 
-## 8.2 Event Generation
+Event schemas and optional generated bindings belong under:
 
-Event schemas and optional generated bindings are placed under:
-
-```
-contracts/events/<service-or-domain>/
-```
+`contracts/events/<service-or-domain>/`
 
 ------------------------------------------------------------------------
 
-# 9. Versioning
-
-## 9.1 HTTP APIs
-
-Changes to a service OpenAPI specification represent **interface changes**.
-
-Breaking changes must be introduced deliberately.
-
-## 9.2 Event Contracts
-
-Event schemas must be versioned when incompatible changes occur.
-
-Example:
-
-```
-user-created.v1.json
-user-created.v2.json
-```
-
-Existing versions must not be silently modified.
-
-------------------------------------------------------------------------
-
-# 10. API Gateway Consideration
-
-Proteon is expected to evolve toward the topology:
-
-```
-client → api-gateway → services
-```
-
-This does not change the integration contract model.
-
-Implications:
-
-- services still own their APIs and events
-- `contracts/` remains the internal integration layer
-- external gateway APIs may introduce additional external contracts
-- the gateway must not replace explicit service contracts
-
-------------------------------------------------------------------------
-
-# 11. Example Repository Layout
-
-```
-services/
-  identity/
-    api/
-      openapi.yml
-    internal/
-      adapters/
-        http/
-          generated/
-            server/
-              openapi.gen.go
-
-contracts/
-  http/
-    identity/
-      client.gen.go
-      models.gen.go
-  events/
-    identity/
-      user-created.v1.json
-      user-deleted.v1.json
-```
-
-In this structure:
-
-- the service owns the API and event semantics
-- generated server code remains inside the service
-- shared HTTP client contracts live under `contracts/http/`
-- shared event schemas live under `contracts/events/`
-
-------------------------------------------------------------------------
-
-# 12. Decision Summary
+# 8. Summary
 
 Proteon standardizes the following rules:
 
@@ -456,23 +229,3 @@ Proteon standardizes the following rules:
 - default to event choreography across services
 - prohibit cross-service imports
 - treat integration models as adapter-layer types, not domain models
-
-------------------------------------------------------------------------
-
-# 13. Consequences
-
-## Benefits
-
-- explicit service boundaries
-- strong architectural isolation
-- reusable contracts without coupling services
-- consistent model for HTTP and events
-- monorepo scale without architectural drift
-
-## Costs
-
-- contract generation workflows must be maintained
-- contract versioning requires discipline
-- services must perform explicit model mapping
-
-These costs are intentional and preferable to hidden coupling.

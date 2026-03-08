@@ -1,7 +1,11 @@
 # Proteon Engineering Guide
 
-This document defines the architectural principles, structure, and
+This document defines the repository structure, conventions, and
 development workflow for the Proteon monorepo.
+
+Architecture intent and constraints are defined in `docs/architecture/`
+(see `00_CONTEXT.md`, `01_PRINCIPLES.md`, `02_WORKFLOW.md`, `03_INDEX.md`).
+This document aligns with those and specifies how they apply to the repo.
 
 It is intentionally opinionated. Deviations require explicit discussion.
 
@@ -177,12 +181,13 @@ Configuration is resolved once at startup.
 
 # 5. OpenAPI & Code Generation
 
--   `api/openapi.yml` is the source of truth.
--   Shared schemas live in `libs/api/openapi/`.
+Each service owns its HTTP API. See `docs/architecture/system/INTEGRATION_CONTRACTS.md` for the full model.
+
+-   Per service: `services/<service>/api/openapi.yml` is the source of truth for that service’s API.
+-   Shared schemas may live in `libs/api/openapi/`.
+-   Generated server code lives inside the service: `internal/adapters/http/generated/server/` (e.g. `openapi.gen.go`, committed).
+-   Shared HTTP client artifacts for other services go under `contracts/http/<service>/` when used.
 -   Bundled spec: `.build/generated/openapi.bundle.yml` (ignored).
--   Generated server stubs:
-    `internal/adapters/http/generated/server/openapi.gen.go`
-    (committed).
 
 ------------------------------------------------------------------------
 
