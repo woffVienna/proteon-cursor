@@ -98,6 +98,38 @@ Rules:
 - orchestration belongs in application, not domain
 - transport and persistence concerns remain in adapters
 
+Canonical service directory layout:
+
+    services/<svc>/
+      api/
+        openapi.yml
+        oapi-codegen.server.yml
+
+      internal/
+        adapters/
+          db/
+          http/
+            generated/server/
+          nats/
+        application/
+          dto/
+          interfaces/
+          services/
+        domain/
+          model/
+          rules/
+        platform/
+
+      cmd/<svc>/
+        main.go
+
+      .build/
+      Makefile
+      go.mod
+
+Each service exposes its entrypoint under `cmd/<svc>/main.go`.
+The `<svc>` name must match the service folder name.
+
 ------------------------------------------------------------------------
 
 # 4. Communication Model
@@ -166,15 +198,29 @@ contracts and technical utilities are different concerns.
 
 # 6. Runtime and Development Model
 
-Configuration is resolved once at startup.
+Configuration is resolved once at startup using a two-layer model.
+
+CoreConfig:
+
+- source: environment variables (and `.env.local` for local development)
+- immutable at runtime
+- loaded at service startup
+- fail-fast validation
+- changes require restart or redeploy
+
+RuntimeConfig:
+
+- source: Postgres (`service_runtime_settings`)
+- defaults applied first, DB overrides applied second
+- validation executed at startup
+- changes require service restart
+- no live mutation
 
 Rules:
 
-- base configuration comes from environment and startup inputs
 - service-specific typed configuration belongs inside the service
 - shared configuration loading/orchestration belongs in `libs/platform`
 - invalid configuration must fail fast
-- configuration changes require restart or redeploy
 
 Local development standard:
 
@@ -229,7 +275,19 @@ Then use the topic-specific documents under `system/` as needed.
 
 ------------------------------------------------------------------------
 
-# 10. Source of Truth Rule
+# 10. Deferred Decisions
+
+The following decisions are explicitly unresolved:
+
+- SDK / client codegen location
+- cross-service client strategy
+- event schema versioning strategy
+
+Do not design against assumptions in these areas without explicit discussion.
+
+------------------------------------------------------------------------
+
+# 11. Source of Truth Rule
 
 Architecture intent must be persisted in:
 

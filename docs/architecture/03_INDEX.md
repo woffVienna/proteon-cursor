@@ -47,7 +47,7 @@ back to the canonical architecture docs.
 
 | Document | Purpose |
 | --- | --- |
-| `prompts/ARCHITECT_PROMPT.md` | reusable prompt for architecture reasoning |
+| `prompts/ARCHITECT_PROJECT_INSTRUCTIONS.md` | ChatGPT project instructions for architecture reasoning |
 | `prompts/CHAT_RESET_PROMPT.md` | reset prompt for new chats |
 | `prompts/00_ARCHITECTURE_CONTEXT.md` | compact bootstrap prompt |
 
