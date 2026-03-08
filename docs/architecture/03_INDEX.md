@@ -38,18 +38,16 @@ Then use the topic-specific documents below.
 
 ------------------------------------------------------------------------
 
-# Prompt Assets
+# GPT Assets
 
-Prompt assets live under `prompts/`.
+GPT assets live under `gpt/`.
 
-They are not the source of truth. They are convenience documents that point
-back to the canonical architecture docs.
+They are not the source of truth. They are operational guidance for how
+ChatGPT should use the canonical architecture docs.
 
 | Document | Purpose |
 | --- | --- |
-| `prompts/ARCHITECT_PROJECT_INSTRUCTIONS.md` | ChatGPT project instructions for architecture reasoning |
-| `prompts/CHAT_RESET_PROMPT.md` | reset prompt for new chats |
-| `prompts/00_ARCHITECTURE_CONTEXT.md` | compact bootstrap prompt |
+| `gpt/ARCHITECT_PROJECT_INSTRUCTIONS.md` | ChatGPT project instructions for architecture reasoning |
 
 ------------------------------------------------------------------------
 
