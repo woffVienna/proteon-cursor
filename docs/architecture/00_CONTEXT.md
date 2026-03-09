@@ -104,6 +104,7 @@ Canonical service directory layout:
       api/
         openapi.yml
         oapi-codegen.server.yml
+        oapi-codegen.client.yml
 
       internal/
         adapters/
@@ -279,9 +280,7 @@ Then use the topic-specific documents under `system/` as needed.
 
 The following decisions are explicitly unresolved:
 
-- SDK / client codegen location
-- cross-service client strategy
-- event schema versioning strategy
+- (none)
 
 Do not design against assumptions in these areas without explicit discussion.
 
