@@ -314,9 +314,7 @@ Committed:
 
 # 13. Deferred Decisions
 
--   SDK / client codegen location
--   Cross-service client strategy
--   Event schema versioning strategy
+-   (none)
 
 ------------------------------------------------------------------------
 
