@@ -5,8 +5,9 @@ This document is the navigation map for the architecture documents.
 If you are new to the repository, start with:
 
 1. `00_CONTEXT.md`
-2. `01_PRINCIPLES.md`
-3. `02_WORKFLOW.md`
+2. `product/PRODUCT_CONTEXT.md`
+3. `01_PRINCIPLES.md`
+4. `02_WORKFLOW.md`
 
 Then use the topic-specific documents below.
 
@@ -17,6 +18,7 @@ Then use the topic-specific documents below.
 | Document | Purpose |
 | --- | --- |
 | `00_CONTEXT.md` | single entry point for system context |
+| `product/PRODUCT_CONTEXT.md` | platform definition, boundaries, domains, non-goals |
 | `01_PRINCIPLES.md` | stable architecture guardrails |
 | `02_WORKFLOW.md` | engineering and AI-assisted workflow |
 | `03_INDEX.md` | navigation map for architecture documents |

@@ -6,11 +6,20 @@ architecture.
 It provides the high-level system context, core constraints, and the reading
 path for the more specific architecture documents in this directory.
 
-Proteon is a Go monorepo containing independent microservices.
+------------------------------------------------------------------------
+
+# 0. Product Intent
+
+Proteon is a **social gaming backend platform** (PaaS). Platform boundaries,
+core domains, target users, and non-goals are described in
+`product/PRODUCT_CONTEXT.md`. The constraints and structure in this document
+exist to support those product goals.
 
 ------------------------------------------------------------------------
 
 # 1. System Overview
+
+Proteon is a Go monorepo containing independent microservices.
 
 Proteon is designed as a microservice platform with explicit service
 boundaries.
@@ -268,9 +277,10 @@ The detailed definitions live in `system/SERVICE_TYPES.md`.
 Read the architecture documents in this order:
 
 1. `00_CONTEXT.md`
-2. `01_PRINCIPLES.md`
-3. `02_WORKFLOW.md`
-4. `03_INDEX.md`
+2. `product/PRODUCT_CONTEXT.md`
+3. `01_PRINCIPLES.md`
+4. `02_WORKFLOW.md`
+5. `03_INDEX.md`
 
 Then use the topic-specific documents under `system/` as needed.
 
