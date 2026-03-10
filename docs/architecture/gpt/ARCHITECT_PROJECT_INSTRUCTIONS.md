@@ -30,6 +30,7 @@ Templates for structured output:
 
 - `ARCHITECTURE_BRIEF_TEMPLATE.md`
 - `ADR_TEMPLATE.md`
+- `SERVICE_TEMPLATE.md`
 
 ## Interaction Rules
 
