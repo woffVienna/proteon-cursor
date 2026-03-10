@@ -81,6 +81,7 @@ Canonical layout:
       api/
         openapi.yml
         oapi-codegen.server.yml
+        oapi-codegen.client.yml
 
       internal/
         adapters/
@@ -109,6 +110,9 @@ Convention:
 
 -   Each service must expose its entrypoint under `cmd/<svc>/main.go`.
 -   The `<svc>` name must match the service folder name.
+-   When creating a new service, fill out
+    `docs/architecture/templates/SERVICE_TEMPLATE.md` to document
+    ownership, boundaries, and contracts.
 
 ------------------------------------------------------------------------
 

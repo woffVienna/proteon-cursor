@@ -59,6 +59,7 @@ ChatGPT should use the canonical architecture docs.
 | --- | --- |
 | `templates/ARCHITECTURE_BRIEF_TEMPLATE.md` | template for solution briefs |
 | `templates/ADR_TEMPLATE.md` | template for architecture decisions |
+| `templates/SERVICE_TEMPLATE.md` | template for per-service architecture/ownership docs |
 
 ------------------------------------------------------------------------
 
