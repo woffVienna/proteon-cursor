@@ -3,5 +3,6 @@ go 1.25.5
 use (
 	./contracts
 	./libs/platform
+	./services/api-gateway
 	./services/identity
 )

@@ -1,0 +1,28 @@
+image:
+  repository: proteon/api-gateway-service
+  tag: dev
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 8080
+  targetPort: 8080
+
+ingress:
+  enabled: true
+  className: traefik
+  annotations: {}
+  host: ""
+  path: /
+  pathType: Prefix
+
+env:
+  SERVICE_NAME: api-gateway
+  ENV: dev
+  MARKET: AT
+  VERSION: dev
+  PORT: "8080"
+  PUBLIC_BASE_URL: http://localhost:8080
+  JWT_ISSUER: proteon.identity
+  JWT_AUDIENCE: proteon-api
+  IDENTITY_URL: http://identity:8081

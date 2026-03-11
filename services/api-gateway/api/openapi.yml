@@ -1,0 +1,91 @@
+openapi: 3.0.3
+info:
+  title: Proteon API Gateway
+  version: 0.1.0
+  description: |
+    Public entry point for the Proteon platform. The gateway validates JWTs,
+    injects verified identity context, and routes requests to downstream
+    services. Proxied routes are documented here for client reference but
+    are defined authoritatively by the owning service.
+
+servers:
+  - url: http://localhost:8080
+    description: Local development (via k3d ingress or direct)
+
+tags:
+  - name: auth
+    description: Authentication (proxied to identity)
+  - name: identity
+    description: Identity domain (proxied to identity)
+  - name: well-known
+    description: Discovery endpoints (proxied to identity)
+  - name: internal
+    description: Gateway-owned operational endpoints
+
+paths:
+  /v1/auth/exchange:
+    post:
+      tags: [auth]
+      summary: Exchange external identity for Proteon access token
+      description: |
+        Proxied to identity service. See identity service API for full
+        request/response schema.
+      responses:
+        "200":
+          description: Platform token issued
+        "400":
+          description: Bad request
+        "401":
+          description: Unauthorized
+        "500":
+          description: Internal error
+
+  /v1/.well-known/jwks.json:
+    get:
+      tags: [well-known]
+      summary: JSON Web Key Set (JWKS)
+      description: Proxied to identity service.
+      responses:
+        "200":
+          description: JWKS document
+
+  /v1/users/{userId}:
+    get:
+      tags: [identity]
+      summary: Get platform identity by user ID
+      description: |
+        Proxied to identity service. Requires a valid Proteon access JWT.
+        Gateway injects X-Platform-User-Id and X-Platform-Tenant headers.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Platform identity found
+        "401":
+          description: Unauthorized
+        "404":
+          description: Not found
+
+  /v1/health:
+    get:
+      tags: [internal]
+      summary: Gateway health check
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "../../../libs/api/openapi/common/components.yml#/components/schemas/HealthResponse"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      $ref: "../../../libs/api/openapi/common/components.yml#/components/securitySchemes/bearerAuth"

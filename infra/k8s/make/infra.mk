@@ -10,7 +10,7 @@ NATS_VALUES_FILE := $(HELM_VALUES_DIR)/nats-values.yaml
 
 POSTGRES_RELEASE := postgresql
 NATS_RELEASE := nats
-DEPLOYABLE_SERVICES := identity
+DEPLOYABLE_SERVICES := identity api-gateway
 
 IMAGE_REPO ?= proteon
 IMAGE_TAG ?= dev
