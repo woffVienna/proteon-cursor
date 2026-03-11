@@ -4,6 +4,7 @@ FROM golang:1.25.5-alpine AS builder
 WORKDIR /repo
 
 COPY go.work go.work.sum* ./
+COPY contracts ./contracts
 COPY libs ./libs
 COPY services ./services
 

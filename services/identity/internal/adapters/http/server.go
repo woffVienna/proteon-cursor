@@ -1,13 +1,11 @@
 package http
 
 import (
-	"crypto/ed25519"
 	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/woffVienna/proteon-cursor/libs/platform/httpcommon"
-	"github.com/woffVienna/proteon-cursor/libs/platform/security/jwtverifier"
 	"github.com/woffVienna/proteon-cursor/services/identity/internal/adapters/http/generated/server"
 	authapp "github.com/woffVienna/proteon-cursor/services/identity/internal/application/auth"
 	"github.com/woffVienna/proteon-cursor/services/identity/internal/application/interfaces"
@@ -22,8 +20,6 @@ type Config struct {
 	OpenAPIBundlePath string
 	ServiceName       string
 	Version           string
-	JWTIssuer         string
-	JWTAudience       string
 }
 
 // Server is the HTTP adapter.
@@ -34,17 +30,9 @@ type Server struct {
 
 // NewServer creates an HTTP server with the given dependencies.
 func NewServer(cfg Config, authSvc *authapp.Service, issuer interfaces.TokenIssuer) *Server {
-	verifier := jwtverifier.New(jwtverifier.Config{
-		Issuer:   cfg.JWTIssuer,
-		Audience: cfg.JWTAudience,
-		Keys: map[string]ed25519.PublicKey{
-			issuer.Kid(): issuer.PublicKey(),
-		},
-		Leeway: 30 * time.Second,
-	})
 	return &Server{
 		cfg:     cfg,
-		handler: NewHandler(authSvc, issuer, verifier, cfg.ServiceName, cfg.Version),
+		handler: NewHandler(authSvc, issuer, cfg.ServiceName, cfg.Version),
 	}
 }
 

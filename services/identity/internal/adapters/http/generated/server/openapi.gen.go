@@ -8,13 +8,17 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/oapi-codegen/runtime"
 	strictnethttp "github.com/oapi-codegen/runtime/strictmiddleware/nethttp"
+	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
+// Defines values for AuthExchangeResponseTokenType.
 const (
-	BearerAuthScopes = "bearerAuth.Scopes"
+	Bearer AuthExchangeResponseTokenType = "Bearer"
 )
 
 // Defines values for HealthResponseStatus.
@@ -22,10 +26,32 @@ const (
 	Ok HealthResponseStatus = "ok"
 )
 
-// Defines values for TokenPairResponseTokenType.
-const (
-	Bearer TokenPairResponseTokenType = "Bearer"
-)
+// AuthExchangeRequest defines model for AuthExchangeRequest.
+type AuthExchangeRequest struct {
+	// ExternalUserId User ID as known by the customer platform
+	ExternalUserId string `json:"external_user_id"`
+
+	// Provider Identifier of the customer platform or auth provider
+	Provider string `json:"provider"`
+
+	// Tenant Optional tenant context
+	Tenant *string `json:"tenant,omitempty"`
+}
+
+// AuthExchangeResponse defines model for AuthExchangeResponse.
+type AuthExchangeResponse struct {
+	AccessToken string `json:"access_token"`
+
+	// ExpiresIn Token lifetime in seconds
+	ExpiresIn int32 `json:"expires_in"`
+
+	// PlatformUserId Proteon platform user ID (stable across exchanges)
+	PlatformUserId openapi_types.UUID            `json:"platform_user_id"`
+	TokenType      AuthExchangeResponseTokenType `json:"token_type"`
+}
+
+// AuthExchangeResponseTokenType defines model for AuthExchangeResponse.TokenType.
+type AuthExchangeResponseTokenType string
 
 // ErrorBody defines model for ErrorBody.
 type ErrorBody struct {
@@ -71,43 +97,14 @@ type JwksResponse struct {
 	Keys []Jwk `json:"keys"`
 }
 
-// LoginRequest defines model for LoginRequest.
-type LoginRequest struct {
-	Login    string  `json:"login"`
-	Password string  `json:"password"`
-	Tenant   *string `json:"tenant,omitempty"`
+// PlatformIdentityResponse defines model for PlatformIdentityResponse.
+type PlatformIdentityResponse struct {
+	CreatedAt      time.Time          `json:"created_at"`
+	ExternalUserId string             `json:"external_user_id"`
+	PlatformUserId openapi_types.UUID `json:"platform_user_id"`
+	Provider       string             `json:"provider"`
+	Tenant         *string            `json:"tenant,omitempty"`
 }
-
-// LogoutRequest defines model for LogoutRequest.
-type LogoutRequest struct {
-	RefreshToken string `json:"refresh_token"`
-}
-
-// MeResponse defines model for MeResponse.
-type MeResponse struct {
-	Scopes    *[]string `json:"scopes,omitempty"`
-	SessionId *string   `json:"session_id,omitempty"`
-	Sub       string    `json:"sub"`
-	Tenant    string    `json:"tenant"`
-}
-
-// RefreshRequest defines model for RefreshRequest.
-type RefreshRequest struct {
-	RefreshToken string `json:"refresh_token"`
-}
-
-// TokenPairResponse defines model for TokenPairResponse.
-type TokenPairResponse struct {
-	AccessToken  string                     `json:"access_token"`
-	ExpiresIn    int32                      `json:"expires_in"`
-	RefreshToken string                     `json:"refresh_token"`
-	Scope        *string                    `json:"scope,omitempty"`
-	SessionId    *string                    `json:"session_id,omitempty"`
-	TokenType    TokenPairResponseTokenType `json:"token_type"`
-}
-
-// TokenPairResponseTokenType defines model for TokenPairResponse.TokenType.
-type TokenPairResponseTokenType string
 
 // BadRequest defines model for BadRequest.
 type BadRequest = ErrorResponse
@@ -115,20 +112,17 @@ type BadRequest = ErrorResponse
 // InternalError defines model for InternalError.
 type InternalError = ErrorResponse
 
+// NotFound defines model for NotFound.
+type NotFound = ErrorResponse
+
 // TooManyRequests defines model for TooManyRequests.
 type TooManyRequests = ErrorResponse
 
 // Unauthorized defines model for Unauthorized.
 type Unauthorized = ErrorResponse
 
-// PostV1AuthLoginJSONRequestBody defines body for PostV1AuthLogin for application/json ContentType.
-type PostV1AuthLoginJSONRequestBody = LoginRequest
-
-// PostV1AuthLogoutJSONRequestBody defines body for PostV1AuthLogout for application/json ContentType.
-type PostV1AuthLogoutJSONRequestBody = LogoutRequest
-
-// PostV1AuthRefreshJSONRequestBody defines body for PostV1AuthRefresh for application/json ContentType.
-type PostV1AuthRefreshJSONRequestBody = RefreshRequest
+// PostV1AuthExchangeJSONRequestBody defines body for PostV1AuthExchange for application/json ContentType.
+type PostV1AuthExchangeJSONRequestBody = AuthExchangeRequest
 
 // Getter for additional properties for Jwk. Returns the specified
 // element and whether it was found
@@ -244,21 +238,15 @@ type ServerInterface interface {
 	// JSON Web Key Set (JWKS)
 	// (GET /v1/.well-known/jwks.json)
 	GetV1WellKnownJwks(w http.ResponseWriter, r *http.Request)
-	// Login with username/email + password
-	// (POST /v1/auth/login)
-	PostV1AuthLogin(w http.ResponseWriter, r *http.Request)
-	// Logout (revoke refresh token)
-	// (POST /v1/auth/logout)
-	PostV1AuthLogout(w http.ResponseWriter, r *http.Request)
-	// Refresh access token
-	// (POST /v1/auth/refresh)
-	PostV1AuthRefresh(w http.ResponseWriter, r *http.Request)
+	// Exchange external identity assertion for a Proteon access token
+	// (POST /v1/auth/exchange)
+	PostV1AuthExchange(w http.ResponseWriter, r *http.Request)
 	// Health check
 	// (GET /v1/health)
 	GetV1Health(w http.ResponseWriter, r *http.Request)
-	// Get current subject
-	// (GET /v1/me)
-	GetV1Me(w http.ResponseWriter, r *http.Request)
+	// Get platform identity by user ID
+	// (GET /v1/users/{userId})
+	GetV1UsersUserId(w http.ResponseWriter, r *http.Request, userId openapi_types.UUID)
 }
 
 // Unimplemented server implementation that returns http.StatusNotImplemented for each endpoint.
@@ -271,21 +259,9 @@ func (_ Unimplemented) GetV1WellKnownJwks(w http.ResponseWriter, r *http.Request
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
-// Login with username/email + password
-// (POST /v1/auth/login)
-func (_ Unimplemented) PostV1AuthLogin(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusNotImplemented)
-}
-
-// Logout (revoke refresh token)
-// (POST /v1/auth/logout)
-func (_ Unimplemented) PostV1AuthLogout(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusNotImplemented)
-}
-
-// Refresh access token
-// (POST /v1/auth/refresh)
-func (_ Unimplemented) PostV1AuthRefresh(w http.ResponseWriter, r *http.Request) {
+// Exchange external identity assertion for a Proteon access token
+// (POST /v1/auth/exchange)
+func (_ Unimplemented) PostV1AuthExchange(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -295,9 +271,9 @@ func (_ Unimplemented) GetV1Health(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
-// Get current subject
-// (GET /v1/me)
-func (_ Unimplemented) GetV1Me(w http.ResponseWriter, r *http.Request) {
+// Get platform identity by user ID
+// (GET /v1/users/{userId})
+func (_ Unimplemented) GetV1UsersUserId(w http.ResponseWriter, r *http.Request, userId openapi_types.UUID) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -324,39 +300,11 @@ func (siw *ServerInterfaceWrapper) GetV1WellKnownJwks(w http.ResponseWriter, r *
 	handler.ServeHTTP(w, r)
 }
 
-// PostV1AuthLogin operation middleware
-func (siw *ServerInterfaceWrapper) PostV1AuthLogin(w http.ResponseWriter, r *http.Request) {
+// PostV1AuthExchange operation middleware
+func (siw *ServerInterfaceWrapper) PostV1AuthExchange(w http.ResponseWriter, r *http.Request) {
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.PostV1AuthLogin(w, r)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
-// PostV1AuthLogout operation middleware
-func (siw *ServerInterfaceWrapper) PostV1AuthLogout(w http.ResponseWriter, r *http.Request) {
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.PostV1AuthLogout(w, r)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
-// PostV1AuthRefresh operation middleware
-func (siw *ServerInterfaceWrapper) PostV1AuthRefresh(w http.ResponseWriter, r *http.Request) {
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.PostV1AuthRefresh(w, r)
+		siw.Handler.PostV1AuthExchange(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -380,17 +328,22 @@ func (siw *ServerInterfaceWrapper) GetV1Health(w http.ResponseWriter, r *http.Re
 	handler.ServeHTTP(w, r)
 }
 
-// GetV1Me operation middleware
-func (siw *ServerInterfaceWrapper) GetV1Me(w http.ResponseWriter, r *http.Request) {
+// GetV1UsersUserId operation middleware
+func (siw *ServerInterfaceWrapper) GetV1UsersUserId(w http.ResponseWriter, r *http.Request) {
 
-	ctx := r.Context()
+	var err error
 
-	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+	// ------------- Path parameter "userId" -------------
+	var userId openapi_types.UUID
 
-	r = r.WithContext(ctx)
+	err = runtime.BindStyledParameterWithOptions("simple", "userId", chi.URLParam(r, "userId"), &userId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "userId", Err: err})
+		return
+	}
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetV1Me(w, r)
+		siw.Handler.GetV1UsersUserId(w, r, userId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -517,19 +470,13 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Get(options.BaseURL+"/v1/.well-known/jwks.json", wrapper.GetV1WellKnownJwks)
 	})
 	r.Group(func(r chi.Router) {
-		r.Post(options.BaseURL+"/v1/auth/login", wrapper.PostV1AuthLogin)
-	})
-	r.Group(func(r chi.Router) {
-		r.Post(options.BaseURL+"/v1/auth/logout", wrapper.PostV1AuthLogout)
-	})
-	r.Group(func(r chi.Router) {
-		r.Post(options.BaseURL+"/v1/auth/refresh", wrapper.PostV1AuthRefresh)
+		r.Post(options.BaseURL+"/v1/auth/exchange", wrapper.PostV1AuthExchange)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/v1/health", wrapper.GetV1Health)
 	})
 	r.Group(func(r chi.Router) {
-		r.Get(options.BaseURL+"/v1/me", wrapper.GetV1Me)
+		r.Get(options.BaseURL+"/v1/users/{userId}", wrapper.GetV1UsersUserId)
 	})
 
 	return r
@@ -538,6 +485,8 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 type BadRequestJSONResponse ErrorResponse
 
 type InternalErrorJSONResponse ErrorResponse
+
+type NotFoundJSONResponse ErrorResponse
 
 type TooManyRequestsJSONResponse ErrorResponse
 
@@ -568,158 +517,53 @@ func (response GetV1WellKnownJwks500JSONResponse) VisitGetV1WellKnownJwksRespons
 	return json.NewEncoder(w).Encode(response)
 }
 
-type PostV1AuthLoginRequestObject struct {
-	Body *PostV1AuthLoginJSONRequestBody
+type PostV1AuthExchangeRequestObject struct {
+	Body *PostV1AuthExchangeJSONRequestBody
 }
 
-type PostV1AuthLoginResponseObject interface {
-	VisitPostV1AuthLoginResponse(w http.ResponseWriter) error
+type PostV1AuthExchangeResponseObject interface {
+	VisitPostV1AuthExchangeResponse(w http.ResponseWriter) error
 }
 
-type PostV1AuthLogin200JSONResponse TokenPairResponse
+type PostV1AuthExchange200JSONResponse AuthExchangeResponse
 
-func (response PostV1AuthLogin200JSONResponse) VisitPostV1AuthLoginResponse(w http.ResponseWriter) error {
+func (response PostV1AuthExchange200JSONResponse) VisitPostV1AuthExchangeResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
 
 	return json.NewEncoder(w).Encode(response)
 }
 
-type PostV1AuthLogin400JSONResponse struct{ BadRequestJSONResponse }
+type PostV1AuthExchange400JSONResponse struct{ BadRequestJSONResponse }
 
-func (response PostV1AuthLogin400JSONResponse) VisitPostV1AuthLoginResponse(w http.ResponseWriter) error {
+func (response PostV1AuthExchange400JSONResponse) VisitPostV1AuthExchangeResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(400)
 
 	return json.NewEncoder(w).Encode(response)
 }
 
-type PostV1AuthLogin401JSONResponse struct{ UnauthorizedJSONResponse }
+type PostV1AuthExchange401JSONResponse struct{ UnauthorizedJSONResponse }
 
-func (response PostV1AuthLogin401JSONResponse) VisitPostV1AuthLoginResponse(w http.ResponseWriter) error {
+func (response PostV1AuthExchange401JSONResponse) VisitPostV1AuthExchangeResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(401)
 
 	return json.NewEncoder(w).Encode(response)
 }
 
-type PostV1AuthLogin429JSONResponse struct{ TooManyRequestsJSONResponse }
+type PostV1AuthExchange429JSONResponse struct{ TooManyRequestsJSONResponse }
 
-func (response PostV1AuthLogin429JSONResponse) VisitPostV1AuthLoginResponse(w http.ResponseWriter) error {
+func (response PostV1AuthExchange429JSONResponse) VisitPostV1AuthExchangeResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(429)
 
 	return json.NewEncoder(w).Encode(response)
 }
 
-type PostV1AuthLogin500JSONResponse struct{ InternalErrorJSONResponse }
+type PostV1AuthExchange500JSONResponse struct{ InternalErrorJSONResponse }
 
-func (response PostV1AuthLogin500JSONResponse) VisitPostV1AuthLoginResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(500)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
-type PostV1AuthLogoutRequestObject struct {
-	Body *PostV1AuthLogoutJSONRequestBody
-}
-
-type PostV1AuthLogoutResponseObject interface {
-	VisitPostV1AuthLogoutResponse(w http.ResponseWriter) error
-}
-
-type PostV1AuthLogout204Response struct {
-}
-
-func (response PostV1AuthLogout204Response) VisitPostV1AuthLogoutResponse(w http.ResponseWriter) error {
-	w.WriteHeader(204)
-	return nil
-}
-
-type PostV1AuthLogout400JSONResponse struct{ BadRequestJSONResponse }
-
-func (response PostV1AuthLogout400JSONResponse) VisitPostV1AuthLogoutResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(400)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
-type PostV1AuthLogout401JSONResponse struct{ UnauthorizedJSONResponse }
-
-func (response PostV1AuthLogout401JSONResponse) VisitPostV1AuthLogoutResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(401)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
-type PostV1AuthLogout429JSONResponse struct{ TooManyRequestsJSONResponse }
-
-func (response PostV1AuthLogout429JSONResponse) VisitPostV1AuthLogoutResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(429)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
-type PostV1AuthLogout500JSONResponse struct{ InternalErrorJSONResponse }
-
-func (response PostV1AuthLogout500JSONResponse) VisitPostV1AuthLogoutResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(500)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
-type PostV1AuthRefreshRequestObject struct {
-	Body *PostV1AuthRefreshJSONRequestBody
-}
-
-type PostV1AuthRefreshResponseObject interface {
-	VisitPostV1AuthRefreshResponse(w http.ResponseWriter) error
-}
-
-type PostV1AuthRefresh200JSONResponse TokenPairResponse
-
-func (response PostV1AuthRefresh200JSONResponse) VisitPostV1AuthRefreshResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
-type PostV1AuthRefresh400JSONResponse struct{ BadRequestJSONResponse }
-
-func (response PostV1AuthRefresh400JSONResponse) VisitPostV1AuthRefreshResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(400)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
-type PostV1AuthRefresh401JSONResponse struct{ UnauthorizedJSONResponse }
-
-func (response PostV1AuthRefresh401JSONResponse) VisitPostV1AuthRefreshResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(401)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
-type PostV1AuthRefresh429JSONResponse struct{ TooManyRequestsJSONResponse }
-
-func (response PostV1AuthRefresh429JSONResponse) VisitPostV1AuthRefreshResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(429)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
-type PostV1AuthRefresh500JSONResponse struct{ InternalErrorJSONResponse }
-
-func (response PostV1AuthRefresh500JSONResponse) VisitPostV1AuthRefreshResponse(w http.ResponseWriter) error {
+func (response PostV1AuthExchange500JSONResponse) VisitPostV1AuthExchangeResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(500)
 
@@ -751,34 +595,35 @@ func (response GetV1Health500JSONResponse) VisitGetV1HealthResponse(w http.Respo
 	return json.NewEncoder(w).Encode(response)
 }
 
-type GetV1MeRequestObject struct {
+type GetV1UsersUserIdRequestObject struct {
+	UserId openapi_types.UUID `json:"userId"`
 }
 
-type GetV1MeResponseObject interface {
-	VisitGetV1MeResponse(w http.ResponseWriter) error
+type GetV1UsersUserIdResponseObject interface {
+	VisitGetV1UsersUserIdResponse(w http.ResponseWriter) error
 }
 
-type GetV1Me200JSONResponse MeResponse
+type GetV1UsersUserId200JSONResponse PlatformIdentityResponse
 
-func (response GetV1Me200JSONResponse) VisitGetV1MeResponse(w http.ResponseWriter) error {
+func (response GetV1UsersUserId200JSONResponse) VisitGetV1UsersUserIdResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
 
 	return json.NewEncoder(w).Encode(response)
 }
 
-type GetV1Me401JSONResponse struct{ UnauthorizedJSONResponse }
+type GetV1UsersUserId404JSONResponse struct{ NotFoundJSONResponse }
 
-func (response GetV1Me401JSONResponse) VisitGetV1MeResponse(w http.ResponseWriter) error {
+func (response GetV1UsersUserId404JSONResponse) VisitGetV1UsersUserIdResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(401)
+	w.WriteHeader(404)
 
 	return json.NewEncoder(w).Encode(response)
 }
 
-type GetV1Me500JSONResponse struct{ InternalErrorJSONResponse }
+type GetV1UsersUserId500JSONResponse struct{ InternalErrorJSONResponse }
 
-func (response GetV1Me500JSONResponse) VisitGetV1MeResponse(w http.ResponseWriter) error {
+func (response GetV1UsersUserId500JSONResponse) VisitGetV1UsersUserIdResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(500)
 
@@ -790,21 +635,15 @@ type StrictServerInterface interface {
 	// JSON Web Key Set (JWKS)
 	// (GET /v1/.well-known/jwks.json)
 	GetV1WellKnownJwks(ctx context.Context, request GetV1WellKnownJwksRequestObject) (GetV1WellKnownJwksResponseObject, error)
-	// Login with username/email + password
-	// (POST /v1/auth/login)
-	PostV1AuthLogin(ctx context.Context, request PostV1AuthLoginRequestObject) (PostV1AuthLoginResponseObject, error)
-	// Logout (revoke refresh token)
-	// (POST /v1/auth/logout)
-	PostV1AuthLogout(ctx context.Context, request PostV1AuthLogoutRequestObject) (PostV1AuthLogoutResponseObject, error)
-	// Refresh access token
-	// (POST /v1/auth/refresh)
-	PostV1AuthRefresh(ctx context.Context, request PostV1AuthRefreshRequestObject) (PostV1AuthRefreshResponseObject, error)
+	// Exchange external identity assertion for a Proteon access token
+	// (POST /v1/auth/exchange)
+	PostV1AuthExchange(ctx context.Context, request PostV1AuthExchangeRequestObject) (PostV1AuthExchangeResponseObject, error)
 	// Health check
 	// (GET /v1/health)
 	GetV1Health(ctx context.Context, request GetV1HealthRequestObject) (GetV1HealthResponseObject, error)
-	// Get current subject
-	// (GET /v1/me)
-	GetV1Me(ctx context.Context, request GetV1MeRequestObject) (GetV1MeResponseObject, error)
+	// Get platform identity by user ID
+	// (GET /v1/users/{userId})
+	GetV1UsersUserId(ctx context.Context, request GetV1UsersUserIdRequestObject) (GetV1UsersUserIdResponseObject, error)
 }
 
 type StrictHandlerFunc = strictnethttp.StrictHTTPHandlerFunc
@@ -860,11 +699,11 @@ func (sh *strictHandler) GetV1WellKnownJwks(w http.ResponseWriter, r *http.Reque
 	}
 }
 
-// PostV1AuthLogin operation middleware
-func (sh *strictHandler) PostV1AuthLogin(w http.ResponseWriter, r *http.Request) {
-	var request PostV1AuthLoginRequestObject
+// PostV1AuthExchange operation middleware
+func (sh *strictHandler) PostV1AuthExchange(w http.ResponseWriter, r *http.Request) {
+	var request PostV1AuthExchangeRequestObject
 
-	var body PostV1AuthLoginJSONRequestBody
+	var body PostV1AuthExchangeJSONRequestBody
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
 		return
@@ -872,80 +711,18 @@ func (sh *strictHandler) PostV1AuthLogin(w http.ResponseWriter, r *http.Request)
 	request.Body = &body
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.PostV1AuthLogin(ctx, request.(PostV1AuthLoginRequestObject))
+		return sh.ssi.PostV1AuthExchange(ctx, request.(PostV1AuthExchangeRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "PostV1AuthLogin")
+		handler = middleware(handler, "PostV1AuthExchange")
 	}
 
 	response, err := handler(r.Context(), w, r, request)
 
 	if err != nil {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(PostV1AuthLoginResponseObject); ok {
-		if err := validResponse.VisitPostV1AuthLoginResponse(w); err != nil {
-			sh.options.ResponseErrorHandlerFunc(w, r, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// PostV1AuthLogout operation middleware
-func (sh *strictHandler) PostV1AuthLogout(w http.ResponseWriter, r *http.Request) {
-	var request PostV1AuthLogoutRequestObject
-
-	var body PostV1AuthLogoutJSONRequestBody
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
-		return
-	}
-	request.Body = &body
-
-	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.PostV1AuthLogout(ctx, request.(PostV1AuthLogoutRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "PostV1AuthLogout")
-	}
-
-	response, err := handler(r.Context(), w, r, request)
-
-	if err != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(PostV1AuthLogoutResponseObject); ok {
-		if err := validResponse.VisitPostV1AuthLogoutResponse(w); err != nil {
-			sh.options.ResponseErrorHandlerFunc(w, r, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// PostV1AuthRefresh operation middleware
-func (sh *strictHandler) PostV1AuthRefresh(w http.ResponseWriter, r *http.Request) {
-	var request PostV1AuthRefreshRequestObject
-
-	var body PostV1AuthRefreshJSONRequestBody
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
-		return
-	}
-	request.Body = &body
-
-	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.PostV1AuthRefresh(ctx, request.(PostV1AuthRefreshRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "PostV1AuthRefresh")
-	}
-
-	response, err := handler(r.Context(), w, r, request)
-
-	if err != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(PostV1AuthRefreshResponseObject); ok {
-		if err := validResponse.VisitPostV1AuthRefreshResponse(w); err != nil {
+	} else if validResponse, ok := response.(PostV1AuthExchangeResponseObject); ok {
+		if err := validResponse.VisitPostV1AuthExchangeResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -977,23 +754,25 @@ func (sh *strictHandler) GetV1Health(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// GetV1Me operation middleware
-func (sh *strictHandler) GetV1Me(w http.ResponseWriter, r *http.Request) {
-	var request GetV1MeRequestObject
+// GetV1UsersUserId operation middleware
+func (sh *strictHandler) GetV1UsersUserId(w http.ResponseWriter, r *http.Request, userId openapi_types.UUID) {
+	var request GetV1UsersUserIdRequestObject
+
+	request.UserId = userId
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.GetV1Me(ctx, request.(GetV1MeRequestObject))
+		return sh.ssi.GetV1UsersUserId(ctx, request.(GetV1UsersUserIdRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "GetV1Me")
+		handler = middleware(handler, "GetV1UsersUserId")
 	}
 
 	response, err := handler(r.Context(), w, r, request)
 
 	if err != nil {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(GetV1MeResponseObject); ok {
-		if err := validResponse.VisitGetV1MeResponse(w); err != nil {
+	} else if validResponse, ok := response.(GetV1UsersUserIdResponseObject); ok {
+		if err := validResponse.VisitGetV1UsersUserIdResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

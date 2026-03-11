@@ -78,13 +78,23 @@ Implications:
 
 # 6. Relationship to Identity
 
-A reasonable direction is:
+The public auth baseline establishes the following ownership split:
 
-- gateway performs token validation and request admission checks
-- identity service owns identity lifecycle and token issuance semantics
-- downstream services receive verified identity context as needed
+- gateway validates JWTs and performs request admission checks
+- gateway extracts claims and forwards verified identity context to
+  downstream services via trusted internal headers
+- identity service owns identity lifecycle, external identity linkage,
+  and token issuance semantics
+- downstream services receive verified identity context and call identity
+  directly when they need richer identity data
 
-This keeps concerns separated while supporting a clean external entry layer.
+The gateway does not issue tokens, resolve identities, or call the
+identity service on the request path for validation. Token validation
+is stateless using public key verification.
+
+See `briefs/auth-baseline.md` for the full decision and rationale.
+See `services/api-gateway.md` and `services/identity.md` for ownership
+details.
 
 ------------------------------------------------------------------------
 

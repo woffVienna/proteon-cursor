@@ -1,6 +1,8 @@
 package main
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"log"
 
 	"github.com/woffVienna/proteon-cursor/services/identity/internal/adapters/auth"
@@ -15,25 +17,19 @@ func main() {
 		log.Fatalf("failed to load config: %v", err)
 	}
 
-	// Domain adapters
-	validator := auth.NewDemoValidator()
-	refreshStore := auth.NewMemoryStore()
+	identityStore := auth.NewMemoryIdentityStore(generateUUID)
 	issuer, err := auth.NewJWTIssuer(cfg.Service.JWT.Issuer, cfg.Service.JWT.Audience)
 	if err != nil {
 		log.Fatalf("failed to create JWT issuer: %v", err)
 	}
 
-	// Application layer
-	authSvc := authapp.NewService(validator, refreshStore, issuer)
+	authSvc := authapp.NewService(identityStore, identityStore, issuer)
 
-	// HTTP adapter
 	httpCfg := httpadapter.Config{
 		Port:              cfg.HTTP.Port,
 		OpenAPIBundlePath: ".build/generated/openapi.bundle.yml",
 		ServiceName:       cfg.ServiceName,
 		Version:           cfg.Version,
-		JWTIssuer:         cfg.Service.JWT.Issuer,
-		JWTAudience:       cfg.Service.JWT.Audience,
 	}
 	srv := httpadapter.NewServer(httpCfg, authSvc, issuer)
 
@@ -46,4 +42,16 @@ func main() {
 	if err := srv.ListenAndServe(); err != nil {
 		log.Fatalf("server error: %v", err)
 	}
+}
+
+func generateUUID() string {
+	b := make([]byte, 16)
+	_, _ = rand.Read(b)
+	b[6] = (b[6] & 0x0f) | 0x40
+	b[8] = (b[8] & 0x3f) | 0x80
+	return hex.EncodeToString(b[:4]) + "-" +
+		hex.EncodeToString(b[4:6]) + "-" +
+		hex.EncodeToString(b[6:8]) + "-" +
+		hex.EncodeToString(b[8:10]) + "-" +
+		hex.EncodeToString(b[10:])
 }

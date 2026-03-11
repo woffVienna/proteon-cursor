@@ -5,29 +5,24 @@ import (
 	"time"
 )
 
-// Domain errors for auth. Adapters map these to HTTP status codes.
 var (
-	ErrInvalidCredentials    = errors.New("invalid login or password")
-	ErrInvalidRefreshToken   = errors.New("invalid refresh token")
-	ErrRefreshTokenExpired   = errors.New("refresh token expired")
-	ErrMissingRequestPayload = errors.New("missing request body")
+	ErrIdentityNotFound = errors.New("platform identity not found")
+	ErrInvalidAssertion = errors.New("invalid external identity assertion")
 )
 
-// TokenPair is the result of a successful login or refresh.
-type TokenPair struct {
-	AccessToken  string
-	RefreshToken string
-	ExpiresIn    int32
+// PlatformIdentity represents a reduced Proteon platform identity.
+// It maps an external provider + external user ID to a stable platform user ID.
+type PlatformIdentity struct {
+	PlatformUserID string
+	Provider       string
+	ExternalUserID string
+	Tenant         string
+	CreatedAt      time.Time
 }
 
-// SessionInfo holds data stored with a refresh token.
-type SessionInfo struct {
-	UserID    string
-	Tenant    string
-	ExpiresAt time.Time
-}
-
-// UserInfo identifies an authenticated user.
-type UserInfo struct {
-	ID string
+// TokenResult is the result of a successful auth exchange.
+type TokenResult struct {
+	AccessToken    string
+	PlatformUserID string
+	ExpiresIn      int32
 }

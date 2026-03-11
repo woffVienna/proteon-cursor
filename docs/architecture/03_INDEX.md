@@ -40,6 +40,23 @@ Then use the topic-specific documents below.
 
 ------------------------------------------------------------------------
 
+# Service Documents
+
+| Document | Purpose |
+| --- | --- |
+| `services/api-gateway.md` | ownership, responsibilities, and auth behaviour for the API gateway |
+| `services/identity.md` | ownership, responsibilities, and auth exchange for the identity service |
+
+------------------------------------------------------------------------
+
+# Architecture Briefs
+
+| Document | Purpose |
+| --- | --- |
+| `briefs/auth-baseline.md` | public auth baseline decision: JWT model, gateway/identity ownership split |
+
+------------------------------------------------------------------------
+
 # GPT Assets
 
 GPT assets live under `gpt/`.

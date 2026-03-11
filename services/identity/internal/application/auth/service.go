@@ -2,123 +2,63 @@ package auth
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/base64"
 	"time"
 
 	"github.com/woffVienna/proteon-cursor/services/identity/internal/application/interfaces"
 	"github.com/woffVienna/proteon-cursor/services/identity/internal/domain"
 )
 
-const (
-	accessTokenTTL   = 10 * time.Minute
-	refreshTokenTTL  = 7 * 24 * time.Hour
-	refreshTokenSize = 32
-)
+const accessTokenTTL = 10 * time.Minute
 
-// Service implements the auth use cases.
+// Service implements the auth exchange use case.
 type Service struct {
-	validator interfaces.CredentialValidator
-	store     interfaces.RefreshTokenStore
-	issuer    interfaces.TokenIssuer
+	resolver interfaces.IdentityResolver
+	lookup   interfaces.IdentityLookup
+	issuer   interfaces.TokenIssuer
 }
 
 // NewService creates an auth service with the given dependencies.
 func NewService(
-	validator interfaces.CredentialValidator,
-	store interfaces.RefreshTokenStore,
+	resolver interfaces.IdentityResolver,
+	lookup interfaces.IdentityLookup,
 	issuer interfaces.TokenIssuer,
 ) *Service {
 	return &Service{
-		validator: validator,
-		store:     store,
-		issuer:    issuer,
+		resolver: resolver,
+		lookup:   lookup,
+		issuer:   issuer,
 	}
 }
 
-// Login validates credentials, creates a session, and returns a token pair.
-func (s *Service) Login(ctx context.Context, login, password, tenant string) (*domain.TokenPair, error) {
-	if tenant == "" {
-		tenant = "proteon.dev"
+// Exchange processes an external identity assertion from a customer backend.
+// It resolves or creates the platform identity and issues a short-lived access JWT.
+func (s *Service) Exchange(ctx context.Context, provider, externalUserID, tenant string) (*domain.TokenResult, error) {
+	if provider == "" || externalUserID == "" {
+		return nil, domain.ErrInvalidAssertion
 	}
 
-	user, err := s.validator.Validate(ctx, login, password)
+	identity, err := s.resolver.Resolve(ctx, provider, externalUserID, tenant)
 	if err != nil {
 		return nil, err
 	}
 
-	refreshToken, err := newOpaqueToken(refreshTokenSize)
+	accessToken, err := s.issuer.Issue(ctx, identity.PlatformUserID, identity.Tenant, accessTokenTTL)
 	if err != nil {
 		return nil, err
 	}
 
-	expiresAt := time.Now().Add(refreshTokenTTL)
-	if err := s.store.Store(ctx, refreshToken, domain.SessionInfo{
-		UserID:    user.ID,
-		Tenant:    tenant,
-		ExpiresAt: expiresAt,
-	}); err != nil {
-		return nil, err
-	}
-
-	accessToken, err := s.issuer.Issue(ctx, user.ID, tenant, accessTokenTTL)
-	if err != nil {
-		return nil, err
-	}
-
-	return &domain.TokenPair{
-		AccessToken:  accessToken,
-		RefreshToken: refreshToken,
-		ExpiresIn:    int32(accessTokenTTL.Seconds()),
+	return &domain.TokenResult{
+		AccessToken:    accessToken,
+		PlatformUserID: identity.PlatformUserID,
+		ExpiresIn:      int32(accessTokenTTL.Seconds()),
 	}, nil
 }
 
-// Refresh validates the refresh token, rotates it, and returns a new token pair.
-func (s *Service) Refresh(ctx context.Context, refreshToken string) (*domain.TokenPair, error) {
-	info, ok, err := s.store.Get(ctx, refreshToken)
+// GetIdentity retrieves a platform identity by platform user ID.
+func (s *Service) GetIdentity(ctx context.Context, platformUserID string) (*domain.PlatformIdentity, error) {
+	identity, err := s.lookup.GetByPlatformUserID(ctx, platformUserID)
 	if err != nil {
 		return nil, err
 	}
-	if !ok {
-		return nil, domain.ErrInvalidRefreshToken
-	}
-	if time.Now().After(info.ExpiresAt) {
-		return nil, domain.ErrRefreshTokenExpired
-	}
-
-	// Rotate: delete old token
-	_ = s.store.Delete(ctx, refreshToken)
-
-	newRefreshToken, err := newOpaqueToken(refreshTokenSize)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := s.store.Store(ctx, newRefreshToken, info); err != nil {
-		return nil, err
-	}
-
-	accessToken, err := s.issuer.Issue(ctx, info.UserID, info.Tenant, accessTokenTTL)
-	if err != nil {
-		return nil, err
-	}
-
-	return &domain.TokenPair{
-		AccessToken:  accessToken,
-		RefreshToken: newRefreshToken,
-		ExpiresIn:    int32(accessTokenTTL.Seconds()),
-	}, nil
-}
-
-// Logout revokes the refresh token. Idempotent.
-func (s *Service) Logout(ctx context.Context, refreshToken string) error {
-	return s.store.Delete(ctx, refreshToken)
-}
-
-func newOpaqueToken(nBytes int) (string, error) {
-	b := make([]byte, nBytes)
-	if _, err := rand.Read(b); err != nil {
-		return "", err
-	}
-	return base64.RawURLEncoding.EncodeToString(b), nil
+	return &identity, nil
 }

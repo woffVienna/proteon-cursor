@@ -6,8 +6,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/woffVienna/proteon-cursor/libs/platform/httpcommon"
-	"github.com/woffVienna/proteon-cursor/libs/platform/security/jwtverifier"
+	"github.com/google/uuid"
 	"github.com/woffVienna/proteon-cursor/services/identity/internal/adapters/http/generated/server"
 	authapp "github.com/woffVienna/proteon-cursor/services/identity/internal/application/auth"
 	"github.com/woffVienna/proteon-cursor/services/identity/internal/application/interfaces"
@@ -18,7 +17,6 @@ import (
 type Handler struct {
 	authSvc     *authapp.Service
 	issuer      interfaces.TokenIssuer
-	verifier    *jwtverifier.Verifier
 	serviceName string
 	version     string
 }
@@ -27,14 +25,12 @@ type Handler struct {
 func NewHandler(
 	authSvc *authapp.Service,
 	issuer interfaces.TokenIssuer,
-	verifier *jwtverifier.Verifier,
 	serviceName string,
 	version string,
 ) *Handler {
 	return &Handler{
 		authSvc:     authSvc,
 		issuer:      issuer,
-		verifier:    verifier,
 		serviceName: serviceName,
 		version:     version,
 	}
@@ -42,7 +38,7 @@ func NewHandler(
 
 var _ server.StrictServerInterface = (*Handler)(nil)
 
-func (h *Handler) GetV1Health(ctx context.Context, _ server.GetV1HealthRequestObject) (server.GetV1HealthResponseObject, error) {
+func (h *Handler) GetV1Health(_ context.Context, _ server.GetV1HealthRequestObject) (server.GetV1HealthResponseObject, error) {
 	svc := h.serviceName
 	version := h.version
 	return server.GetV1Health200JSONResponse(server.HealthResponse{
@@ -52,7 +48,7 @@ func (h *Handler) GetV1Health(ctx context.Context, _ server.GetV1HealthRequestOb
 	}), nil
 }
 
-func (h *Handler) GetV1WellKnownJwks(ctx context.Context, _ server.GetV1WellKnownJwksRequestObject) (server.GetV1WellKnownJwksResponseObject, error) {
+func (h *Handler) GetV1WellKnownJwks(_ context.Context, _ server.GetV1WellKnownJwksRequestObject) (server.GetV1WellKnownJwksResponseObject, error) {
 	alg := "EdDSA"
 	use := "sig"
 	jwk := server.Jwk{
@@ -66,140 +62,90 @@ func (h *Handler) GetV1WellKnownJwks(ctx context.Context, _ server.GetV1WellKnow
 	return server.GetV1WellKnownJwks200JSONResponse{Keys: []server.Jwk{jwk}}, nil
 }
 
-func (h *Handler) PostV1AuthLogin(ctx context.Context, req server.PostV1AuthLoginRequestObject) (server.PostV1AuthLoginResponseObject, error) {
+func (h *Handler) PostV1AuthExchange(ctx context.Context, req server.PostV1AuthExchangeRequestObject) (server.PostV1AuthExchangeResponseObject, error) {
 	if req.Body == nil {
-		return server.PostV1AuthLogin400JSONResponse{
+		return server.PostV1AuthExchange400JSONResponse{
 			BadRequestJSONResponse: server.BadRequestJSONResponse(server.ErrorResponse{
 				Error: server.ErrorBody{Code: "BAD_REQUEST", Message: "missing request body"},
 			}),
 		}, nil
 	}
 
-	tenant := "proteon.dev"
-	if req.Body.Tenant != nil && *req.Body.Tenant != "" {
+	tenant := ""
+	if req.Body.Tenant != nil {
 		tenant = *req.Body.Tenant
 	}
 
-	pair, err := h.authSvc.Login(ctx, req.Body.Login, req.Body.Password, tenant)
+	result, err := h.authSvc.Exchange(ctx, req.Body.Provider, req.Body.ExternalUserId, tenant)
 	if err != nil {
-		if err == domain.ErrInvalidCredentials {
-			return server.PostV1AuthLogin401JSONResponse{
-				UnauthorizedJSONResponse: server.UnauthorizedJSONResponse(server.ErrorResponse{
-					Error: server.ErrorBody{Code: "INVALID_CREDENTIALS", Message: "invalid login or password"},
+		if err == domain.ErrInvalidAssertion {
+			return server.PostV1AuthExchange400JSONResponse{
+				BadRequestJSONResponse: server.BadRequestJSONResponse(server.ErrorResponse{
+					Error: server.ErrorBody{Code: "INVALID_ASSERTION", Message: "invalid external identity assertion"},
 				}),
 			}, nil
 		}
-		return server.PostV1AuthLogin500JSONResponse{
+		return server.PostV1AuthExchange500JSONResponse{
 			InternalErrorJSONResponse: server.InternalErrorJSONResponse(server.ErrorResponse{
-				Error: server.ErrorBody{Code: "INTERNAL_ERROR", Message: err.Error()},
+				Error: server.ErrorBody{Code: "INTERNAL_ERROR", Message: "internal error"},
 			}),
 		}, nil
 	}
 
-	return server.PostV1AuthLogin200JSONResponse(server.TokenPairResponse{
-		AccessToken:  pair.AccessToken,
-		TokenType:    server.Bearer,
-		ExpiresIn:    pair.ExpiresIn,
-		RefreshToken: pair.RefreshToken,
+	platformUserUUID, err := uuid.Parse(result.PlatformUserID)
+	if err != nil {
+		return server.PostV1AuthExchange500JSONResponse{
+			InternalErrorJSONResponse: server.InternalErrorJSONResponse(server.ErrorResponse{
+				Error: server.ErrorBody{Code: "INTERNAL_ERROR", Message: "internal error"},
+			}),
+		}, nil
+	}
+
+	return server.PostV1AuthExchange200JSONResponse(server.AuthExchangeResponse{
+		AccessToken:    result.AccessToken,
+		TokenType:      server.Bearer,
+		ExpiresIn:      result.ExpiresIn,
+		PlatformUserId: platformUserUUID,
 	}), nil
 }
 
-func (h *Handler) PostV1AuthRefresh(ctx context.Context, req server.PostV1AuthRefreshRequestObject) (server.PostV1AuthRefreshResponseObject, error) {
-	if req.Body == nil {
-		return server.PostV1AuthRefresh400JSONResponse{
-			BadRequestJSONResponse: server.BadRequestJSONResponse(server.ErrorResponse{
-				Error: server.ErrorBody{Code: "BAD_REQUEST", Message: "missing request body"},
-			}),
-		}, nil
-	}
-	if req.Body.RefreshToken == "" {
-		return server.PostV1AuthRefresh400JSONResponse{
-			BadRequestJSONResponse: server.BadRequestJSONResponse(server.ErrorResponse{
-				Error: server.ErrorBody{Code: "BAD_REQUEST", Message: "refresh_token is required"},
-			}),
-		}, nil
-	}
-
-	pair, err := h.authSvc.Refresh(ctx, req.Body.RefreshToken)
+func (h *Handler) GetV1UsersUserId(ctx context.Context, req server.GetV1UsersUserIdRequestObject) (server.GetV1UsersUserIdResponseObject, error) {
+	identity, err := h.authSvc.GetIdentity(ctx, req.UserId.String())
 	if err != nil {
-		if err == domain.ErrInvalidRefreshToken || err == domain.ErrRefreshTokenExpired {
-			return server.PostV1AuthRefresh401JSONResponse{
-				UnauthorizedJSONResponse: server.UnauthorizedJSONResponse(server.ErrorResponse{
-					Error: server.ErrorBody{
-						Code:    "INVALID_REFRESH_TOKEN",
-						Message: "invalid or expired refresh token",
-					},
+		if err == domain.ErrIdentityNotFound {
+			return server.GetV1UsersUserId404JSONResponse{
+				NotFoundJSONResponse: server.NotFoundJSONResponse(server.ErrorResponse{
+					Error: server.ErrorBody{Code: "NOT_FOUND", Message: "platform identity not found"},
 				}),
 			}, nil
 		}
-		return server.PostV1AuthRefresh500JSONResponse{
+		return server.GetV1UsersUserId500JSONResponse{
 			InternalErrorJSONResponse: server.InternalErrorJSONResponse(server.ErrorResponse{
-				Error: server.ErrorBody{Code: "INTERNAL_ERROR", Message: err.Error()},
+				Error: server.ErrorBody{Code: "INTERNAL_ERROR", Message: "internal error"},
 			}),
 		}, nil
 	}
 
-	return server.PostV1AuthRefresh200JSONResponse(server.TokenPairResponse{
-		AccessToken:  pair.AccessToken,
-		TokenType:    server.Bearer,
-		ExpiresIn:    pair.ExpiresIn,
-		RefreshToken: pair.RefreshToken,
-	}), nil
-}
-
-func (h *Handler) PostV1AuthLogout(ctx context.Context, req server.PostV1AuthLogoutRequestObject) (server.PostV1AuthLogoutResponseObject, error) {
-	if req.Body == nil {
-		return server.PostV1AuthLogout400JSONResponse{
-			BadRequestJSONResponse: server.BadRequestJSONResponse(server.ErrorResponse{
-				Error: server.ErrorBody{Code: "BAD_REQUEST", Message: "missing request body"},
-			}),
-		}, nil
-	}
-	if req.Body.RefreshToken == "" {
-		return server.PostV1AuthLogout400JSONResponse{
-			BadRequestJSONResponse: server.BadRequestJSONResponse(server.ErrorResponse{
-				Error: server.ErrorBody{Code: "BAD_REQUEST", Message: "refresh_token is required"},
-			}),
-		}, nil
-	}
-
-	_ = h.authSvc.Logout(ctx, req.Body.RefreshToken)
-	return server.PostV1AuthLogout204Response{}, nil
-}
-
-func (h *Handler) GetV1Me(ctx context.Context, _ server.GetV1MeRequestObject) (server.GetV1MeResponseObject, error) {
-	req := httpcommon.HTTPRequestFromContext(ctx)
-	if req == nil {
-		return server.GetV1Me500JSONResponse{
+	platformUserUUID, err := uuid.Parse(identity.PlatformUserID)
+	if err != nil {
+		return server.GetV1UsersUserId500JSONResponse{
 			InternalErrorJSONResponse: server.InternalErrorJSONResponse(server.ErrorResponse{
-				Error: server.ErrorBody{Code: "INTERNAL_ERROR", Message: "request not available in context"},
+				Error: server.ErrorBody{Code: "INTERNAL_ERROR", Message: "internal error"},
 			}),
 		}, nil
 	}
 
-	rawToken, err := httpcommon.ExtractBearer(req.Header.Get("Authorization"))
-	if err != nil {
-		return server.GetV1Me401JSONResponse{
-			UnauthorizedJSONResponse: server.UnauthorizedJSONResponse(server.ErrorResponse{
-				Error: server.ErrorBody{Code: "UNAUTHORIZED", Message: err.Error()},
-			}),
-		}, nil
+	var tenant *string
+	if identity.Tenant != "" {
+		tenant = &identity.Tenant
 	}
 
-	claims, err := h.verifier.Verify(rawToken)
-	if err != nil {
-		return server.GetV1Me401JSONResponse{
-			UnauthorizedJSONResponse: server.UnauthorizedJSONResponse(server.ErrorResponse{
-				Error: server.ErrorBody{Code: "UNAUTHORIZED", Message: "invalid token"},
-			}),
-		}, nil
-	}
-
-	return server.GetV1Me200JSONResponse(server.MeResponse{
-		Sub:       claims.Subject,
-		Tenant:    claims.Tenant,
-		Scopes:    optionalScopesPtr(claims.Scopes),
-		SessionId: optionalStringPtr(claims.SessionID),
+	return server.GetV1UsersUserId200JSONResponse(server.PlatformIdentityResponse{
+		PlatformUserId: platformUserUUID,
+		Provider:       identity.Provider,
+		ExternalUserId: identity.ExternalUserID,
+		Tenant:         tenant,
+		CreatedAt:      identity.CreatedAt,
 	}), nil
 }
 
@@ -209,18 +155,4 @@ func writeJSONError(w http.ResponseWriter, status int, code, msg string) {
 	_ = json.NewEncoder(w).Encode(server.ErrorResponse{
 		Error: server.ErrorBody{Code: code, Message: msg},
 	})
-}
-
-func optionalStringPtr(s string) *string {
-	if s == "" {
-		return nil
-	}
-	return &s
-}
-
-func optionalScopesPtr(scopes []string) *[]string {
-	if len(scopes) == 0 {
-		return nil
-	}
-	return &scopes
 }

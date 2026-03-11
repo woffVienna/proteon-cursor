@@ -41,12 +41,12 @@ func NewJWTIssuer(issuer, audience string) (*JWTIssuer, error) {
 }
 
 // Issue implements interfaces.TokenIssuer.
-func (j *JWTIssuer) Issue(_ context.Context, userID, tenant string, ttl time.Duration) (string, error) {
+func (j *JWTIssuer) Issue(_ context.Context, platformUserID, tenant string, ttl time.Duration) (string, error) {
 	now := time.Now()
 	claims := jwt.MapClaims{
 		"iss":    j.issuer,
 		"aud":    j.audience,
-		"sub":    userID,
+		"sub":    platformUserID,
 		"iat":    now.Unix(),
 		"nbf":    now.Unix(),
 		"exp":    now.Add(ttl).Unix(),

@@ -12,10 +12,15 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
+
+	"github.com/oapi-codegen/runtime"
+	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
+// Defines values for AuthExchangeResponseTokenType.
 const (
-	BearerAuthScopes = "bearerAuth.Scopes"
+	Bearer AuthExchangeResponseTokenType = "Bearer"
 )
 
 // Defines values for HealthResponseStatus.
@@ -23,10 +28,32 @@ const (
 	Ok HealthResponseStatus = "ok"
 )
 
-// Defines values for TokenPairResponseTokenType.
-const (
-	Bearer TokenPairResponseTokenType = "Bearer"
-)
+// AuthExchangeRequest defines model for AuthExchangeRequest.
+type AuthExchangeRequest struct {
+	// ExternalUserId User ID as known by the customer platform
+	ExternalUserId string `json:"external_user_id"`
+
+	// Provider Identifier of the customer platform or auth provider
+	Provider string `json:"provider"`
+
+	// Tenant Optional tenant context
+	Tenant *string `json:"tenant,omitempty"`
+}
+
+// AuthExchangeResponse defines model for AuthExchangeResponse.
+type AuthExchangeResponse struct {
+	AccessToken string `json:"access_token"`
+
+	// ExpiresIn Token lifetime in seconds
+	ExpiresIn int32 `json:"expires_in"`
+
+	// PlatformUserId Proteon platform user ID (stable across exchanges)
+	PlatformUserId openapi_types.UUID            `json:"platform_user_id"`
+	TokenType      AuthExchangeResponseTokenType `json:"token_type"`
+}
+
+// AuthExchangeResponseTokenType defines model for AuthExchangeResponse.TokenType.
+type AuthExchangeResponseTokenType string
 
 // ErrorBody defines model for ErrorBody.
 type ErrorBody struct {
@@ -72,43 +99,14 @@ type JwksResponse struct {
 	Keys []Jwk `json:"keys"`
 }
 
-// LoginRequest defines model for LoginRequest.
-type LoginRequest struct {
-	Login    string  `json:"login"`
-	Password string  `json:"password"`
-	Tenant   *string `json:"tenant,omitempty"`
+// PlatformIdentityResponse defines model for PlatformIdentityResponse.
+type PlatformIdentityResponse struct {
+	CreatedAt      time.Time          `json:"created_at"`
+	ExternalUserId string             `json:"external_user_id"`
+	PlatformUserId openapi_types.UUID `json:"platform_user_id"`
+	Provider       string             `json:"provider"`
+	Tenant         *string            `json:"tenant,omitempty"`
 }
-
-// LogoutRequest defines model for LogoutRequest.
-type LogoutRequest struct {
-	RefreshToken string `json:"refresh_token"`
-}
-
-// MeResponse defines model for MeResponse.
-type MeResponse struct {
-	Scopes    *[]string `json:"scopes,omitempty"`
-	SessionId *string   `json:"session_id,omitempty"`
-	Sub       string    `json:"sub"`
-	Tenant    string    `json:"tenant"`
-}
-
-// RefreshRequest defines model for RefreshRequest.
-type RefreshRequest struct {
-	RefreshToken string `json:"refresh_token"`
-}
-
-// TokenPairResponse defines model for TokenPairResponse.
-type TokenPairResponse struct {
-	AccessToken  string                     `json:"access_token"`
-	ExpiresIn    int32                      `json:"expires_in"`
-	RefreshToken string                     `json:"refresh_token"`
-	Scope        *string                    `json:"scope,omitempty"`
-	SessionId    *string                    `json:"session_id,omitempty"`
-	TokenType    TokenPairResponseTokenType `json:"token_type"`
-}
-
-// TokenPairResponseTokenType defines model for TokenPairResponse.TokenType.
-type TokenPairResponseTokenType string
 
 // BadRequest defines model for BadRequest.
 type BadRequest = ErrorResponse
@@ -116,20 +114,17 @@ type BadRequest = ErrorResponse
 // InternalError defines model for InternalError.
 type InternalError = ErrorResponse
 
+// NotFound defines model for NotFound.
+type NotFound = ErrorResponse
+
 // TooManyRequests defines model for TooManyRequests.
 type TooManyRequests = ErrorResponse
 
 // Unauthorized defines model for Unauthorized.
 type Unauthorized = ErrorResponse
 
-// PostV1AuthLoginJSONRequestBody defines body for PostV1AuthLogin for application/json ContentType.
-type PostV1AuthLoginJSONRequestBody = LoginRequest
-
-// PostV1AuthLogoutJSONRequestBody defines body for PostV1AuthLogout for application/json ContentType.
-type PostV1AuthLogoutJSONRequestBody = LogoutRequest
-
-// PostV1AuthRefreshJSONRequestBody defines body for PostV1AuthRefresh for application/json ContentType.
-type PostV1AuthRefreshJSONRequestBody = RefreshRequest
+// PostV1AuthExchangeJSONRequestBody defines body for PostV1AuthExchange for application/json ContentType.
+type PostV1AuthExchangeJSONRequestBody = AuthExchangeRequest
 
 // Getter for additional properties for Jwk. Returns the specified
 // element and whether it was found
@@ -316,26 +311,16 @@ type ClientInterface interface {
 	// GetV1WellKnownJwks request
 	GetV1WellKnownJwks(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// PostV1AuthLoginWithBody request with any body
-	PostV1AuthLoginWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// PostV1AuthExchangeWithBody request with any body
+	PostV1AuthExchangeWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	PostV1AuthLogin(ctx context.Context, body PostV1AuthLoginJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// PostV1AuthLogoutWithBody request with any body
-	PostV1AuthLogoutWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	PostV1AuthLogout(ctx context.Context, body PostV1AuthLogoutJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// PostV1AuthRefreshWithBody request with any body
-	PostV1AuthRefreshWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	PostV1AuthRefresh(ctx context.Context, body PostV1AuthRefreshJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	PostV1AuthExchange(ctx context.Context, body PostV1AuthExchangeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetV1Health request
 	GetV1Health(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// GetV1Me request
-	GetV1Me(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// GetV1UsersUserId request
+	GetV1UsersUserId(ctx context.Context, userId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
 func (c *Client) GetV1WellKnownJwks(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -350,8 +335,8 @@ func (c *Client) GetV1WellKnownJwks(ctx context.Context, reqEditors ...RequestEd
 	return c.Client.Do(req)
 }
 
-func (c *Client) PostV1AuthLoginWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostV1AuthLoginRequestWithBody(c.Server, contentType, body)
+func (c *Client) PostV1AuthExchangeWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostV1AuthExchangeRequestWithBody(c.Server, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -362,56 +347,8 @@ func (c *Client) PostV1AuthLoginWithBody(ctx context.Context, contentType string
 	return c.Client.Do(req)
 }
 
-func (c *Client) PostV1AuthLogin(ctx context.Context, body PostV1AuthLoginJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostV1AuthLoginRequest(c.Server, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) PostV1AuthLogoutWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostV1AuthLogoutRequestWithBody(c.Server, contentType, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) PostV1AuthLogout(ctx context.Context, body PostV1AuthLogoutJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostV1AuthLogoutRequest(c.Server, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) PostV1AuthRefreshWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostV1AuthRefreshRequestWithBody(c.Server, contentType, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) PostV1AuthRefresh(ctx context.Context, body PostV1AuthRefreshJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostV1AuthRefreshRequest(c.Server, body)
+func (c *Client) PostV1AuthExchange(ctx context.Context, body PostV1AuthExchangeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostV1AuthExchangeRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -434,8 +371,8 @@ func (c *Client) GetV1Health(ctx context.Context, reqEditors ...RequestEditorFn)
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetV1Me(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetV1MeRequest(c.Server)
+func (c *Client) GetV1UsersUserId(ctx context.Context, userId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetV1UsersUserIdRequest(c.Server, userId)
 	if err != nil {
 		return nil, err
 	}
@@ -473,19 +410,19 @@ func NewGetV1WellKnownJwksRequest(server string) (*http.Request, error) {
 	return req, nil
 }
 
-// NewPostV1AuthLoginRequest calls the generic PostV1AuthLogin builder with application/json body
-func NewPostV1AuthLoginRequest(server string, body PostV1AuthLoginJSONRequestBody) (*http.Request, error) {
+// NewPostV1AuthExchangeRequest calls the generic PostV1AuthExchange builder with application/json body
+func NewPostV1AuthExchangeRequest(server string, body PostV1AuthExchangeJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewPostV1AuthLoginRequestWithBody(server, "application/json", bodyReader)
+	return NewPostV1AuthExchangeRequestWithBody(server, "application/json", bodyReader)
 }
 
-// NewPostV1AuthLoginRequestWithBody generates requests for PostV1AuthLogin with any type of body
-func NewPostV1AuthLoginRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+// NewPostV1AuthExchangeRequestWithBody generates requests for PostV1AuthExchange with any type of body
+func NewPostV1AuthExchangeRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -493,87 +430,7 @@ func NewPostV1AuthLoginRequestWithBody(server string, contentType string, body i
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/v1/auth/login")
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("POST", queryURL.String(), body)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Add("Content-Type", contentType)
-
-	return req, nil
-}
-
-// NewPostV1AuthLogoutRequest calls the generic PostV1AuthLogout builder with application/json body
-func NewPostV1AuthLogoutRequest(server string, body PostV1AuthLogoutJSONRequestBody) (*http.Request, error) {
-	var bodyReader io.Reader
-	buf, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-	bodyReader = bytes.NewReader(buf)
-	return NewPostV1AuthLogoutRequestWithBody(server, "application/json", bodyReader)
-}
-
-// NewPostV1AuthLogoutRequestWithBody generates requests for PostV1AuthLogout with any type of body
-func NewPostV1AuthLogoutRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
-	var err error
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/v1/auth/logout")
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("POST", queryURL.String(), body)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Add("Content-Type", contentType)
-
-	return req, nil
-}
-
-// NewPostV1AuthRefreshRequest calls the generic PostV1AuthRefresh builder with application/json body
-func NewPostV1AuthRefreshRequest(server string, body PostV1AuthRefreshJSONRequestBody) (*http.Request, error) {
-	var bodyReader io.Reader
-	buf, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-	bodyReader = bytes.NewReader(buf)
-	return NewPostV1AuthRefreshRequestWithBody(server, "application/json", bodyReader)
-}
-
-// NewPostV1AuthRefreshRequestWithBody generates requests for PostV1AuthRefresh with any type of body
-func NewPostV1AuthRefreshRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
-	var err error
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/v1/auth/refresh")
+	operationPath := fmt.Sprintf("/v1/auth/exchange")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -620,16 +477,23 @@ func NewGetV1HealthRequest(server string) (*http.Request, error) {
 	return req, nil
 }
 
-// NewGetV1MeRequest generates requests for GetV1Me
-func NewGetV1MeRequest(server string) (*http.Request, error) {
+// NewGetV1UsersUserIdRequest generates requests for GetV1UsersUserId
+func NewGetV1UsersUserIdRequest(server string, userId openapi_types.UUID) (*http.Request, error) {
 	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "userId", runtime.ParamLocationPath, userId)
+	if err != nil {
+		return nil, err
+	}
 
 	serverURL, err := url.Parse(server)
 	if err != nil {
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/v1/me")
+	operationPath := fmt.Sprintf("/v1/users/%s", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -693,26 +557,16 @@ type ClientWithResponsesInterface interface {
 	// GetV1WellKnownJwksWithResponse request
 	GetV1WellKnownJwksWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetV1WellKnownJwksResponse, error)
 
-	// PostV1AuthLoginWithBodyWithResponse request with any body
-	PostV1AuthLoginWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostV1AuthLoginResponse, error)
+	// PostV1AuthExchangeWithBodyWithResponse request with any body
+	PostV1AuthExchangeWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostV1AuthExchangeResponse, error)
 
-	PostV1AuthLoginWithResponse(ctx context.Context, body PostV1AuthLoginJSONRequestBody, reqEditors ...RequestEditorFn) (*PostV1AuthLoginResponse, error)
-
-	// PostV1AuthLogoutWithBodyWithResponse request with any body
-	PostV1AuthLogoutWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostV1AuthLogoutResponse, error)
-
-	PostV1AuthLogoutWithResponse(ctx context.Context, body PostV1AuthLogoutJSONRequestBody, reqEditors ...RequestEditorFn) (*PostV1AuthLogoutResponse, error)
-
-	// PostV1AuthRefreshWithBodyWithResponse request with any body
-	PostV1AuthRefreshWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostV1AuthRefreshResponse, error)
-
-	PostV1AuthRefreshWithResponse(ctx context.Context, body PostV1AuthRefreshJSONRequestBody, reqEditors ...RequestEditorFn) (*PostV1AuthRefreshResponse, error)
+	PostV1AuthExchangeWithResponse(ctx context.Context, body PostV1AuthExchangeJSONRequestBody, reqEditors ...RequestEditorFn) (*PostV1AuthExchangeResponse, error)
 
 	// GetV1HealthWithResponse request
 	GetV1HealthWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetV1HealthResponse, error)
 
-	// GetV1MeWithResponse request
-	GetV1MeWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetV1MeResponse, error)
+	// GetV1UsersUserIdWithResponse request
+	GetV1UsersUserIdWithResponse(ctx context.Context, userId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetV1UsersUserIdResponse, error)
 }
 
 type GetV1WellKnownJwksResponse struct {
@@ -738,10 +592,10 @@ func (r GetV1WellKnownJwksResponse) StatusCode() int {
 	return 0
 }
 
-type PostV1AuthLoginResponse struct {
+type PostV1AuthExchangeResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *TokenPairResponse
+	JSON200      *AuthExchangeResponse
 	JSON400      *BadRequest
 	JSON401      *Unauthorized
 	JSON429      *TooManyRequests
@@ -749,7 +603,7 @@ type PostV1AuthLoginResponse struct {
 }
 
 // Status returns HTTPResponse.Status
-func (r PostV1AuthLoginResponse) Status() string {
+func (r PostV1AuthExchangeResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -757,58 +611,7 @@ func (r PostV1AuthLoginResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r PostV1AuthLoginResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type PostV1AuthLogoutResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON400      *BadRequest
-	JSON401      *Unauthorized
-	JSON429      *TooManyRequests
-	JSON500      *InternalError
-}
-
-// Status returns HTTPResponse.Status
-func (r PostV1AuthLogoutResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r PostV1AuthLogoutResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type PostV1AuthRefreshResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *TokenPairResponse
-	JSON400      *BadRequest
-	JSON401      *Unauthorized
-	JSON429      *TooManyRequests
-	JSON500      *InternalError
-}
-
-// Status returns HTTPResponse.Status
-func (r PostV1AuthRefreshResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r PostV1AuthRefreshResponse) StatusCode() int {
+func (r PostV1AuthExchangeResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -838,16 +641,16 @@ func (r GetV1HealthResponse) StatusCode() int {
 	return 0
 }
 
-type GetV1MeResponse struct {
+type GetV1UsersUserIdResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *MeResponse
-	JSON401      *Unauthorized
+	JSON200      *PlatformIdentityResponse
+	JSON404      *NotFound
 	JSON500      *InternalError
 }
 
 // Status returns HTTPResponse.Status
-func (r GetV1MeResponse) Status() string {
+func (r GetV1UsersUserIdResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -855,7 +658,7 @@ func (r GetV1MeResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r GetV1MeResponse) StatusCode() int {
+func (r GetV1UsersUserIdResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -871,55 +674,21 @@ func (c *ClientWithResponses) GetV1WellKnownJwksWithResponse(ctx context.Context
 	return ParseGetV1WellKnownJwksResponse(rsp)
 }
 
-// PostV1AuthLoginWithBodyWithResponse request with arbitrary body returning *PostV1AuthLoginResponse
-func (c *ClientWithResponses) PostV1AuthLoginWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostV1AuthLoginResponse, error) {
-	rsp, err := c.PostV1AuthLoginWithBody(ctx, contentType, body, reqEditors...)
+// PostV1AuthExchangeWithBodyWithResponse request with arbitrary body returning *PostV1AuthExchangeResponse
+func (c *ClientWithResponses) PostV1AuthExchangeWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostV1AuthExchangeResponse, error) {
+	rsp, err := c.PostV1AuthExchangeWithBody(ctx, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParsePostV1AuthLoginResponse(rsp)
+	return ParsePostV1AuthExchangeResponse(rsp)
 }
 
-func (c *ClientWithResponses) PostV1AuthLoginWithResponse(ctx context.Context, body PostV1AuthLoginJSONRequestBody, reqEditors ...RequestEditorFn) (*PostV1AuthLoginResponse, error) {
-	rsp, err := c.PostV1AuthLogin(ctx, body, reqEditors...)
+func (c *ClientWithResponses) PostV1AuthExchangeWithResponse(ctx context.Context, body PostV1AuthExchangeJSONRequestBody, reqEditors ...RequestEditorFn) (*PostV1AuthExchangeResponse, error) {
+	rsp, err := c.PostV1AuthExchange(ctx, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParsePostV1AuthLoginResponse(rsp)
-}
-
-// PostV1AuthLogoutWithBodyWithResponse request with arbitrary body returning *PostV1AuthLogoutResponse
-func (c *ClientWithResponses) PostV1AuthLogoutWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostV1AuthLogoutResponse, error) {
-	rsp, err := c.PostV1AuthLogoutWithBody(ctx, contentType, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParsePostV1AuthLogoutResponse(rsp)
-}
-
-func (c *ClientWithResponses) PostV1AuthLogoutWithResponse(ctx context.Context, body PostV1AuthLogoutJSONRequestBody, reqEditors ...RequestEditorFn) (*PostV1AuthLogoutResponse, error) {
-	rsp, err := c.PostV1AuthLogout(ctx, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParsePostV1AuthLogoutResponse(rsp)
-}
-
-// PostV1AuthRefreshWithBodyWithResponse request with arbitrary body returning *PostV1AuthRefreshResponse
-func (c *ClientWithResponses) PostV1AuthRefreshWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostV1AuthRefreshResponse, error) {
-	rsp, err := c.PostV1AuthRefreshWithBody(ctx, contentType, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParsePostV1AuthRefreshResponse(rsp)
-}
-
-func (c *ClientWithResponses) PostV1AuthRefreshWithResponse(ctx context.Context, body PostV1AuthRefreshJSONRequestBody, reqEditors ...RequestEditorFn) (*PostV1AuthRefreshResponse, error) {
-	rsp, err := c.PostV1AuthRefresh(ctx, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParsePostV1AuthRefreshResponse(rsp)
+	return ParsePostV1AuthExchangeResponse(rsp)
 }
 
 // GetV1HealthWithResponse request returning *GetV1HealthResponse
@@ -931,13 +700,13 @@ func (c *ClientWithResponses) GetV1HealthWithResponse(ctx context.Context, reqEd
 	return ParseGetV1HealthResponse(rsp)
 }
 
-// GetV1MeWithResponse request returning *GetV1MeResponse
-func (c *ClientWithResponses) GetV1MeWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetV1MeResponse, error) {
-	rsp, err := c.GetV1Me(ctx, reqEditors...)
+// GetV1UsersUserIdWithResponse request returning *GetV1UsersUserIdResponse
+func (c *ClientWithResponses) GetV1UsersUserIdWithResponse(ctx context.Context, userId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetV1UsersUserIdResponse, error) {
+	rsp, err := c.GetV1UsersUserId(ctx, userId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseGetV1MeResponse(rsp)
+	return ParseGetV1UsersUserIdResponse(rsp)
 }
 
 // ParseGetV1WellKnownJwksResponse parses an HTTP response from a GetV1WellKnownJwksWithResponse call
@@ -973,123 +742,22 @@ func ParseGetV1WellKnownJwksResponse(rsp *http.Response) (*GetV1WellKnownJwksRes
 	return response, nil
 }
 
-// ParsePostV1AuthLoginResponse parses an HTTP response from a PostV1AuthLoginWithResponse call
-func ParsePostV1AuthLoginResponse(rsp *http.Response) (*PostV1AuthLoginResponse, error) {
+// ParsePostV1AuthExchangeResponse parses an HTTP response from a PostV1AuthExchangeWithResponse call
+func ParsePostV1AuthExchangeResponse(rsp *http.Response) (*PostV1AuthExchangeResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &PostV1AuthLoginResponse{
+	response := &PostV1AuthExchangeResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest TokenPairResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest BadRequest
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest Unauthorized
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
-		var dest TooManyRequests
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON429 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest InternalError
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParsePostV1AuthLogoutResponse parses an HTTP response from a PostV1AuthLogoutWithResponse call
-func ParsePostV1AuthLogoutResponse(rsp *http.Response) (*PostV1AuthLogoutResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &PostV1AuthLogoutResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest BadRequest
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest Unauthorized
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
-		var dest TooManyRequests
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON429 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest InternalError
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParsePostV1AuthRefreshResponse parses an HTTP response from a PostV1AuthRefreshWithResponse call
-func ParsePostV1AuthRefreshResponse(rsp *http.Response) (*PostV1AuthRefreshResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &PostV1AuthRefreshResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest TokenPairResponse
+		var dest AuthExchangeResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -1161,33 +829,33 @@ func ParseGetV1HealthResponse(rsp *http.Response) (*GetV1HealthResponse, error) 
 	return response, nil
 }
 
-// ParseGetV1MeResponse parses an HTTP response from a GetV1MeWithResponse call
-func ParseGetV1MeResponse(rsp *http.Response) (*GetV1MeResponse, error) {
+// ParseGetV1UsersUserIdResponse parses an HTTP response from a GetV1UsersUserIdWithResponse call
+func ParseGetV1UsersUserIdResponse(rsp *http.Response) (*GetV1UsersUserIdResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &GetV1MeResponse{
+	response := &GetV1UsersUserIdResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest MeResponse
+		var dest PlatformIdentityResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON200 = &dest
 
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest Unauthorized
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
-		response.JSON401 = &dest
+		response.JSON404 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest InternalError

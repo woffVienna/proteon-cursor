@@ -8,24 +8,22 @@ import (
 	"github.com/woffVienna/proteon-cursor/services/identity/internal/domain"
 )
 
-// CredentialValidator validates login credentials and returns user info.
-// Implemented by adapters (e.g. DB, demo).
-type CredentialValidator interface {
-	Validate(ctx context.Context, login, password string) (domain.UserInfo, error)
+// IdentityResolver resolves or creates a platform identity from an external
+// identity assertion. Implemented by adapters (e.g. in-memory, Postgres).
+type IdentityResolver interface {
+	Resolve(ctx context.Context, provider, externalUserID, tenant string) (domain.PlatformIdentity, error)
 }
 
-// RefreshTokenStore stores and retrieves refresh tokens.
+// IdentityLookup retrieves an existing platform identity by platform user ID.
 // Implemented by adapters (e.g. in-memory, Postgres).
-type RefreshTokenStore interface {
-	Store(ctx context.Context, token string, info domain.SessionInfo) error
-	Get(ctx context.Context, token string) (domain.SessionInfo, bool, error)
-	Delete(ctx context.Context, token string) error
+type IdentityLookup interface {
+	GetByPlatformUserID(ctx context.Context, platformUserID string) (domain.PlatformIdentity, error)
 }
 
 // TokenIssuer issues signed access tokens (JWTs).
 // Implemented by adapters (e.g. Ed25519 JWT issuer).
 type TokenIssuer interface {
-	Issue(ctx context.Context, userID, tenant string, ttl time.Duration) (string, error)
+	Issue(ctx context.Context, platformUserID, tenant string, ttl time.Duration) (string, error)
 	PublicKey() ed25519.PublicKey
 	Kid() string
 }

@@ -1,8 +1,12 @@
 openapi: 3.0.3
 info:
   title: Proteon Identity Service API
-  version: 0.1.0
-  description: Internal identity-service API. Exposed publicly only via api-gateway proxy routes.
+  version: 0.2.0
+  description: |
+    Identity service API. Owns reduced platform identity, external identity
+    linkage, and token issuance. Auth exchange is called by customer backends.
+    Identity domain endpoints are consumed by other Proteon services or
+    proxied through the API gateway.
 
 servers:
   - url: http://localhost:8081
@@ -10,28 +14,33 @@ servers:
 
 tags:
   - name: auth
+  - name: identity
   - name: well-known
   - name: internal
 
 paths:
-  /v1/auth/login:
+  /v1/auth/exchange:
     post:
       tags: [auth]
-      operationId: postV1AuthLogin
-      summary: Login with username/email + password
+      operationId: postV1AuthExchange
+      summary: Exchange external identity assertion for a Proteon access token
+      description: |
+        Called by the customer backend after authenticating the end user.
+        Resolves or creates a reduced platform identity and issues a
+        short-lived Proteon access JWT.
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/LoginRequest"
+              $ref: "#/components/schemas/AuthExchangeRequest"
       responses:
         "200":
-          description: Tokens issued
+          description: Platform token issued
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/TokenPairResponse"
+                $ref: "#/components/schemas/AuthExchangeResponse"
         "400":
           $ref: "../../../libs/api/openapi/common/errors.yml#/components/responses/BadRequest"
         "401":
@@ -41,72 +50,30 @@ paths:
         "500":
           $ref: "../../../libs/api/openapi/common/errors.yml#/components/responses/InternalError"
 
-  /v1/auth/refresh:
-    post:
-      tags: [auth]
-      operationId: postV1AuthRefresh
-      summary: Refresh access token
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/RefreshRequest"
-      responses:
-        "200":
-          description: Tokens refreshed
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/TokenPairResponse"
-        "400":
-          $ref: "../../../libs/api/openapi/common/errors.yml#/components/responses/BadRequest"
-        "401":
-          $ref: "../../../libs/api/openapi/common/errors.yml#/components/responses/Unauthorized"
-        "429":
-          $ref: "../../../libs/api/openapi/common/errors.yml#/components/responses/TooManyRequests"
-        "500":
-          $ref: "../../../libs/api/openapi/common/errors.yml#/components/responses/InternalError"
-
-  /v1/auth/logout:
-    post:
-      tags: [auth]
-      operationId: postV1AuthLogout
-      summary: Logout (revoke refresh token)
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/LogoutRequest"
-      responses:
-        "204":
-          description: Logged out
-        "400":
-          $ref: "../../../libs/api/openapi/common/errors.yml#/components/responses/BadRequest"
-        "401":
-          $ref: "../../../libs/api/openapi/common/errors.yml#/components/responses/Unauthorized"
-        "429":
-          $ref: "../../../libs/api/openapi/common/errors.yml#/components/responses/TooManyRequests"
-        "500":
-          $ref: "../../../libs/api/openapi/common/errors.yml#/components/responses/InternalError"
-
-  /v1/me:
+  /v1/users/{userId}:
     get:
-      tags: [auth]
-      operationId: getV1Me
-      summary: Get current subject
-      security:
-        - bearerAuth: []
+      tags: [identity]
+      operationId: getV1UsersUserId
+      summary: Get platform identity by user ID
+      description: |
+        Returns the reduced platform identity for a given platform user ID.
+        Used by downstream services to look up identity information.
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
       responses:
         "200":
-          description: Subject info
+          description: Platform identity found
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/MeResponse"
-        "401":
-          $ref: "../../../libs/api/openapi/common/errors.yml#/components/responses/Unauthorized"
+                $ref: "#/components/schemas/PlatformIdentityResponse"
+        "404":
+          $ref: "../../../libs/api/openapi/common/errors.yml#/components/responses/NotFound"
         "500":
           $ref: "../../../libs/api/openapi/common/errors.yml#/components/responses/InternalError"
 
@@ -115,6 +82,9 @@ paths:
       tags: [well-known]
       operationId: getV1WellKnownJwks
       summary: JSON Web Key Set (JWKS)
+      description: |
+        Returns the public keys used to verify Proteon access JWTs.
+        The API gateway uses this to perform stateless token validation.
       responses:
         "200":
           description: JWKS document
@@ -146,52 +116,34 @@ components:
       $ref: "../../../libs/api/openapi/common/components.yml#/components/securitySchemes/bearerAuth"
 
   schemas:
-    LoginRequest:
+    AuthExchangeRequest:
       type: object
       additionalProperties: false
-      required: [login, password]
+      required: [provider, external_user_id]
       properties:
-        login:
+        provider:
           type: string
           minLength: 1
-          maxLength: 320
-          example: demo@proteon.dev
-        password:
+          maxLength: 128
+          description: Identifier of the customer platform or auth provider
+          example: acme-games
+        external_user_id:
           type: string
-          format: password
           minLength: 1
-          maxLength: 1024
-          example: demo
+          maxLength: 512
+          description: User ID as known by the customer platform
+          example: usr_abc123
         tenant:
           type: string
           minLength: 1
           maxLength: 64
-          example: proteon.dev
+          description: Optional tenant context
+          example: acme-games.prod
 
-    RefreshRequest:
+    AuthExchangeResponse:
       type: object
       additionalProperties: false
-      required: [refresh_token]
-      properties:
-        refresh_token:
-          type: string
-          minLength: 20
-          maxLength: 4096
-
-    LogoutRequest:
-      type: object
-      additionalProperties: false
-      required: [refresh_token]
-      properties:
-        refresh_token:
-          type: string
-          minLength: 20
-          maxLength: 4096
-
-    TokenPairResponse:
-      type: object
-      additionalProperties: false
-      required: [access_token, token_type, expires_in, refresh_token]
+      required: [access_token, token_type, expires_in, platform_user_id]
       properties:
         access_token:
           type: string
@@ -202,30 +154,30 @@ components:
           type: integer
           format: int32
           minimum: 1
+          description: Token lifetime in seconds
           example: 600
-        refresh_token:
+        platform_user_id:
           type: string
-        scope:
-          type: string
-          example: "mcp:read mcp:write"
-        session_id:
-          type: string
+          format: uuid
+          description: Proteon platform user ID (stable across exchanges)
 
-    MeResponse:
+    PlatformIdentityResponse:
       type: object
       additionalProperties: false
-      required: [sub, tenant]
+      required: [platform_user_id, provider, external_user_id, created_at]
       properties:
-        sub:
+        platform_user_id:
+          type: string
+          format: uuid
+        provider:
+          type: string
+        external_user_id:
           type: string
         tenant:
           type: string
-        scopes:
-          type: array
-          items:
-            type: string
-        session_id:
+        created_at:
           type: string
+          format: date-time
 
     JwksResponse:
       type: object
