@@ -264,11 +264,13 @@ Proteon recognizes three primary service roles.
 
 Examples:
 
-- `api-gateway` is an edge service
-- `identity` is a domain service
+- `api-gateway` and `backoffice-gateway` are edge services
+- `identity` and `auth` are domain services
 - background processors are worker services
 
-The detailed definitions live in `system/SERVICE_TYPES.md`.
+The detailed definitions live in `system/SERVICE_TYPES.md`. For
+persona terminology (tenant, players, backoffice user, operator, tenant
+user), see `GLOSSARY.md`.
 
 ------------------------------------------------------------------------
 

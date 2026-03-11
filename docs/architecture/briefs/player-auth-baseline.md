@@ -1,4 +1,4 @@
-# Architecture Brief: Public Auth Baseline
+# Architecture Brief: Player / Customer platform auth baseline
 
 ## Status
 
@@ -9,6 +9,14 @@ validation and reverse proxy to identity.
 
 Establish the baseline public authentication model for Proteon and define
 the ownership split between api-gateway and identity.
+
+**Scope:** This brief describes auth for the **customer platform**
+(player-facing): tenants' end-users (players) authenticate via the
+tenant's application (e.g. the customer platform); the tenant's backend
+performs the Proteon auth exchange; the tenant's frontend uses the
+resulting JWT against api-gateway. Backoffice auth (operators and
+tenant users) is separate; see `briefs/backoffice-auth-baseline.md` and
+`GLOSSARY.md`.
 
 ## Context
 
@@ -43,21 +51,22 @@ Reference documents:
 
 ## Clarifications
 
-- The customer platform authenticates the end user
-- The customer backend performs the Proteon auth exchange
+- The tenant's application (e.g. customer platform) authenticates the
+  end user (player)
+- The tenant's backend performs the Proteon auth exchange
 - Proteon issues a short-lived pure access JWT
-- The customer frontend uses that JWT against api-gateway
+- The tenant's frontend uses that JWT against api-gateway
 - Realtime and streaming auth are explicitly deferred from this decision
 
 ------------------------------------------------------------------------
 
 ## Architecture Overview
 
-Proteon uses a customer-authenticated, platform-token model.
+Proteon uses a tenant-authenticated, platform-token model.
 
-The customer backend exchanges or asserts user identity with Proteon. The
+The tenant's backend exchanges or asserts user identity with Proteon. The
 identity service resolves or creates a reduced platform identity and issues
-a short-lived Proteon access JWT. The customer frontend then calls
+a short-lived Proteon access JWT. The tenant's frontend then calls
 api-gateway directly using that JWT. The gateway validates the JWT and
 forwards verified identity context to downstream services.
 
@@ -78,8 +87,8 @@ JWT is the correct primitive for this topology because:
   token. The gateway extracts claims and forwards them downstream without
   an introspection call or shared session state.
 - **No server-side session state.** Proteon does not own the user session.
-  The customer does. A short-lived access JWT is the clean expression of a
-  point-in-time platform identity assertion.
+  The tenant's application does. A short-lived access JWT is the clean
+  expression of a point-in-time platform identity assertion.
 - **Industry standard.** This is the established model for platform tokens
   in PaaS and BaaS systems.
 
@@ -96,7 +105,7 @@ Alternatives considered and rejected:
 Claims should be minimal:
 
 - Platform user ID
-- Tenant or customer ID
+- Tenant ID
 - Token expiry
 - Issuer and audience
 
@@ -123,11 +132,11 @@ richer identity data call the identity service HTTP API directly.
 
 ## Data / Event Flow
 
-1. User authenticates on the customer platform
-2. Customer backend calls Proteon identity auth exchange endpoint
+1. Player authenticates on the tenant's application (e.g. customer platform)
+2. Tenant's backend calls Proteon identity auth exchange endpoint
 3. Identity resolves or creates a reduced platform identity
 4. Identity issues a short-lived access JWT
-5. Customer backend forwards the JWT to the customer frontend
+5. Tenant's backend forwards the JWT to the tenant's frontend
 6. Frontend calls api-gateway with the JWT
 7. Gateway validates the JWT and extracts claims
 8. Gateway forwards verified identity context to downstream services
@@ -158,10 +167,10 @@ richer identity data call the identity service HTTP API directly.
 
 ### Known design characteristics
 
-- **Customer session and Proteon token are independent.** The customer
-  session may outlive the Proteon token. When the token expires, the
-  customer backend re-exchanges. This is working as designed. TTL is
-  the control mechanism.
+- **Tenant's application session and Proteon token are independent.** The
+  session on the tenant's side may outlive the Proteon token. When the
+  token expires, the tenant's backend re-exchanges. This is working as
+  designed. TTL is the control mechanism.
 - **Client-side token exposure is intentional.** JWT is a bearer token
   designed to be carried by the client. The security model relies on
   short TTL, HTTPS-only transport, minimal claims, and audience/issuer
@@ -171,7 +180,7 @@ richer identity data call the identity service HTTP API directly.
 
 - Token refresh and revocation semantics
 - Realtime and streaming authentication
-- Admin or backoffice access surfaces
+- Backoffice access: see `briefs/backoffice-auth-baseline.md`
 
 ------------------------------------------------------------------------
 

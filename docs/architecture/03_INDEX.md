@@ -18,6 +18,7 @@ Then use the topic-specific documents below.
 | Document | Purpose |
 | --- | --- |
 | `00_CONTEXT.md` | single entry point for system context |
+| `GLOSSARY.md` | canonical persona and terminology (tenant, players, backoffice user, operator, tenant user) |
 | `product/PRODUCT_CONTEXT.md` | platform definition, boundaries, domains, non-goals |
 | `01_PRINCIPLES.md` | stable architecture guardrails |
 | `02_WORKFLOW.md` | engineering and AI-assisted workflow |
@@ -45,7 +46,9 @@ Then use the topic-specific documents below.
 | Document | Purpose |
 | --- | --- |
 | `services/api-gateway.md` | ownership, responsibilities, and auth behaviour for the API gateway |
+| `services/backoffice-gateway.md` | edge service for backoffice traffic; app-key for auth routes, JWT for rest |
 | `services/identity.md` | ownership, responsibilities, and auth exchange for the identity service |
+| `services/auth.md` | backoffice auth methods and credential storage; exchange with Identity for tokens |
 
 ------------------------------------------------------------------------
 
@@ -53,7 +56,8 @@ Then use the topic-specific documents below.
 
 | Document | Purpose |
 | --- | --- |
-| `briefs/auth-baseline.md` | public auth baseline decision: JWT model, gateway/identity ownership split |
+| `briefs/player-auth-baseline.md` | player/customer platform auth: JWT model, api-gateway/identity ownership split |
+| `briefs/backoffice-auth-baseline.md` | backoffice auth baseline: backoffice-gateway, auth service, Identity, app-key and JWT |
 
 ------------------------------------------------------------------------
 

@@ -15,18 +15,29 @@
 
 ### Primary responsibilities
 
-- Reduced Proteon platform identity (resolve or create)
-- External identity linkage (mapping customer-side user identity to a
+- User records for all platform users: **players** (end-users of a
+  tenant's product) and **backoffice users** (operators and tenant
+  users; see `GLOSSARY.md`)
+- Reduced Proteon platform identity (resolve or create) for players
+- External identity linkage (mapping tenant-side user identity to a
   Proteon platform identity)
-- Auth exchange endpoint for customer backends
-- Token issuance semantics (JWT creation, signing, claims, TTL)
+- Auth exchange endpoint for tenant backends (player auth)
+- Token issuance semantics (JWT creation, signing, claims, TTL) for
+  both player and backoffice tokens
 - Identity domain API (user profile lookup, account state)
 - Future refresh and revocation decisions (deferred, owned here when needed)
 
+Identity does not store credentials for backoffice users. The **auth**
+service owns backoffice authentication methods and credential storage;
+the link between auth and Identity is `user_id`. Identity issues JWTs
+for backoffice users when auth requests them after successful
+authentication.
+
 ### Non-responsibilities (out of scope)
 
-- End-user authentication (owned by the customer platform)
-- JWT validation at the edge (owned by api-gateway)
+- End-user authentication (owned by the tenant's application for players;
+  owned by auth service for backoffice users)
+- JWT validation at the edge (owned by api-gateway and backoffice-gateway)
 - Request routing or edge protection
 - Business rules for other domains (social, matchmaking, sessions)
 
@@ -36,6 +47,7 @@ Reference documents:
 - `system/DOMAIN_BOUNDARIES.md`
 - `product/PRODUCT_CONTEXT.md`
 - `01_PRINCIPLES.md`
+- `GLOSSARY.md` (personas: tenant, players, backoffice user, operator, tenant user)
 
 ------------------------------------------------------------------------
 
@@ -89,10 +101,10 @@ HTTP transport, persistence, and generated server code.
 
 The API surface has two distinct areas:
 
-- **Auth exchange endpoints**: called by customer backends to assert
+- **Auth exchange endpoints**: called by tenant backends to assert
   external identity and receive a Proteon access JWT.
 - **Identity domain endpoints**: called by other Proteon services (via
-  `contracts/http/identity/`) or through the gateway for client-facing
+  `contracts/http/identity/`) or through the gateway for tenant-facing
   needs. Provides user profile lookup, identity resolution, and account
   state queries.
 
@@ -134,21 +146,21 @@ This service must not:
 
 ## 6. Auth Exchange Flow
 
-1. Customer backend calls the identity auth exchange endpoint
+1. Tenant's backend calls the identity auth exchange endpoint
 2. Identity validates the external identity assertion
 3. Identity resolves an existing platform identity or creates a new one
 4. Identity issues a short-lived access JWT with minimal claims
-5. Identity returns the JWT to the customer backend
+5. Identity returns the JWT to the tenant's backend
 
-The customer backend is responsible for forwarding the JWT to the customer
-frontend. Identity does not interact with the end user directly.
+The tenant's backend is responsible for forwarding the JWT to the tenant's
+frontend. Identity does not interact with the end user (player) directly.
 
 ------------------------------------------------------------------------
 
 ## 7. Operational Expectations
 
 - **Scale characteristics**: must handle auth exchange volume from all
-  integrating customers; identity lookups from downstream services
+  integrating tenants; identity lookups from downstream services
 - **Latency sensitivity**: moderate for auth exchange (not on every
   request path); identity lookups should be fast
 - **Persistence**: Postgres — owns identity data exclusively

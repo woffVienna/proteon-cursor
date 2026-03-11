@@ -6,6 +6,12 @@ the API gateway in Proteon.
 It exists to prevent the gateway from becoming a hidden orchestration layer
 or a business-logic-heavy god service.
 
+The platform has two edge gateways: **api-gateway** (player-facing;
+customer platform traffic) and **backoffice-gateway** (backoffice
+traffic: operators and tenant users). This document describes the
+gateway role in general. Backoffice-specific behaviour (app-key for
+auth routes, JWT for rest) is in `services/backoffice-gateway.md`.
+
 ------------------------------------------------------------------------
 
 # 1. Purpose
@@ -13,6 +19,8 @@ or a business-logic-heavy god service.
 Proteon is expected to evolve toward an external interaction model of:
 
 `client -> api-gateway -> services`
+
+(or, for backoffice: `backoffice app -> backoffice-gateway -> services`).
 
 The API gateway provides a controlled external boundary for clients while
 preserving explicit service ownership behind that boundary.
@@ -92,9 +100,10 @@ The gateway does not issue tokens, resolve identities, or call the
 identity service on the request path for validation. Token validation
 is stateless using public key verification.
 
-See `briefs/auth-baseline.md` for the full decision and rationale.
-See `services/api-gateway.md` and `services/identity.md` for ownership
-details.
+See `briefs/player-auth-baseline.md` for the player-facing auth decision
+and rationale. See `briefs/backoffice-auth-baseline.md` for backoffice
+auth. See `services/api-gateway.md`, `services/backoffice-gateway.md`,
+`services/identity.md`, and `services/auth.md` for ownership details.
 
 ------------------------------------------------------------------------
 
