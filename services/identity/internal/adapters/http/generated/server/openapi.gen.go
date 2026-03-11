@@ -18,7 +18,18 @@ import (
 
 // Defines values for AuthExchangeResponseTokenType.
 const (
-	Bearer AuthExchangeResponseTokenType = "Bearer"
+	AuthExchangeResponseTokenTypeBearer AuthExchangeResponseTokenType = "Bearer"
+)
+
+// Defines values for BackofficeTokenRequestSubjectType.
+const (
+	Operator   BackofficeTokenRequestSubjectType = "operator"
+	TenantUser BackofficeTokenRequestSubjectType = "tenant_user"
+)
+
+// Defines values for BackofficeTokenResponseTokenType.
+const (
+	BackofficeTokenResponseTokenTypeBearer BackofficeTokenResponseTokenType = "Bearer"
 )
 
 // Defines values for HealthResponseStatus.
@@ -52,6 +63,36 @@ type AuthExchangeResponse struct {
 
 // AuthExchangeResponseTokenType defines model for AuthExchangeResponse.TokenType.
 type AuthExchangeResponseTokenType string
+
+// BackofficeTokenRequest defines model for BackofficeTokenRequest.
+type BackofficeTokenRequest struct {
+	// Audience Optional audience override (defaults to \"backoffice\")
+	Audience *string `json:"audience,omitempty"`
+
+	// SubjectType Type of backoffice user (operator or tenant_user)
+	SubjectType BackofficeTokenRequestSubjectType `json:"subject_type"`
+
+	// TenantId Optional tenant context for tenant users
+	TenantId *string `json:"tenant_id,omitempty"`
+
+	// UserId Platform user ID of the backoffice user
+	UserId openapi_types.UUID `json:"user_id"`
+}
+
+// BackofficeTokenRequestSubjectType Type of backoffice user (operator or tenant_user)
+type BackofficeTokenRequestSubjectType string
+
+// BackofficeTokenResponse defines model for BackofficeTokenResponse.
+type BackofficeTokenResponse struct {
+	AccessToken string `json:"access_token"`
+
+	// ExpiresIn Token lifetime in seconds
+	ExpiresIn int32                            `json:"expires_in"`
+	TokenType BackofficeTokenResponseTokenType `json:"token_type"`
+}
+
+// BackofficeTokenResponseTokenType defines model for BackofficeTokenResponse.TokenType.
+type BackofficeTokenResponseTokenType string
 
 // ErrorBody defines model for ErrorBody.
 type ErrorBody struct {
@@ -120,6 +161,9 @@ type TooManyRequests = ErrorResponse
 
 // Unauthorized defines model for Unauthorized.
 type Unauthorized = ErrorResponse
+
+// PostInternalV1BackofficeTokensJSONRequestBody defines body for PostInternalV1BackofficeTokens for application/json ContentType.
+type PostInternalV1BackofficeTokensJSONRequestBody = BackofficeTokenRequest
 
 // PostV1AuthExchangeJSONRequestBody defines body for PostV1AuthExchange for application/json ContentType.
 type PostV1AuthExchangeJSONRequestBody = AuthExchangeRequest
@@ -235,6 +279,9 @@ func (a Jwk) MarshalJSON() ([]byte, error) {
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
+	// Issue backoffice access token for a known user
+	// (POST /internal/v1/backoffice-tokens)
+	PostInternalV1BackofficeTokens(w http.ResponseWriter, r *http.Request)
 	// JSON Web Key Set (JWKS)
 	// (GET /v1/.well-known/jwks.json)
 	GetV1WellKnownJwks(w http.ResponseWriter, r *http.Request)
@@ -252,6 +299,12 @@ type ServerInterface interface {
 // Unimplemented server implementation that returns http.StatusNotImplemented for each endpoint.
 
 type Unimplemented struct{}
+
+// Issue backoffice access token for a known user
+// (POST /internal/v1/backoffice-tokens)
+func (_ Unimplemented) PostInternalV1BackofficeTokens(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
 
 // JSON Web Key Set (JWKS)
 // (GET /v1/.well-known/jwks.json)
@@ -285,6 +338,20 @@ type ServerInterfaceWrapper struct {
 }
 
 type MiddlewareFunc func(http.Handler) http.Handler
+
+// PostInternalV1BackofficeTokens operation middleware
+func (siw *ServerInterfaceWrapper) PostInternalV1BackofficeTokens(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.PostInternalV1BackofficeTokens(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
 
 // GetV1WellKnownJwks operation middleware
 func (siw *ServerInterfaceWrapper) GetV1WellKnownJwks(w http.ResponseWriter, r *http.Request) {
@@ -467,6 +534,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	}
 
 	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/internal/v1/backoffice-tokens", wrapper.PostInternalV1BackofficeTokens)
+	})
+	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/v1/.well-known/jwks.json", wrapper.GetV1WellKnownJwks)
 	})
 	r.Group(func(r chi.Router) {
@@ -491,6 +561,41 @@ type NotFoundJSONResponse ErrorResponse
 type TooManyRequestsJSONResponse ErrorResponse
 
 type UnauthorizedJSONResponse ErrorResponse
+
+type PostInternalV1BackofficeTokensRequestObject struct {
+	Body *PostInternalV1BackofficeTokensJSONRequestBody
+}
+
+type PostInternalV1BackofficeTokensResponseObject interface {
+	VisitPostInternalV1BackofficeTokensResponse(w http.ResponseWriter) error
+}
+
+type PostInternalV1BackofficeTokens200JSONResponse BackofficeTokenResponse
+
+func (response PostInternalV1BackofficeTokens200JSONResponse) VisitPostInternalV1BackofficeTokensResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type PostInternalV1BackofficeTokens400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response PostInternalV1BackofficeTokens400JSONResponse) VisitPostInternalV1BackofficeTokensResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type PostInternalV1BackofficeTokens500JSONResponse struct{ InternalErrorJSONResponse }
+
+func (response PostInternalV1BackofficeTokens500JSONResponse) VisitPostInternalV1BackofficeTokensResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response)
+}
 
 type GetV1WellKnownJwksRequestObject struct {
 }
@@ -632,6 +737,9 @@ func (response GetV1UsersUserId500JSONResponse) VisitGetV1UsersUserIdResponse(w 
 
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
+	// Issue backoffice access token for a known user
+	// (POST /internal/v1/backoffice-tokens)
+	PostInternalV1BackofficeTokens(ctx context.Context, request PostInternalV1BackofficeTokensRequestObject) (PostInternalV1BackofficeTokensResponseObject, error)
 	// JSON Web Key Set (JWKS)
 	// (GET /v1/.well-known/jwks.json)
 	GetV1WellKnownJwks(ctx context.Context, request GetV1WellKnownJwksRequestObject) (GetV1WellKnownJwksResponseObject, error)
@@ -673,6 +781,37 @@ type strictHandler struct {
 	ssi         StrictServerInterface
 	middlewares []StrictMiddlewareFunc
 	options     StrictHTTPServerOptions
+}
+
+// PostInternalV1BackofficeTokens operation middleware
+func (sh *strictHandler) PostInternalV1BackofficeTokens(w http.ResponseWriter, r *http.Request) {
+	var request PostInternalV1BackofficeTokensRequestObject
+
+	var body PostInternalV1BackofficeTokensJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.PostInternalV1BackofficeTokens(ctx, request.(PostInternalV1BackofficeTokensRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "PostInternalV1BackofficeTokens")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(PostInternalV1BackofficeTokensResponseObject); ok {
+		if err := validResponse.VisitPostInternalV1BackofficeTokensResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
 }
 
 // GetV1WellKnownJwks operation middleware

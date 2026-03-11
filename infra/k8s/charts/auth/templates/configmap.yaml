@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: auth-config
+data:
+  SERVICE_NAME: {{ .Values.env.SERVICE_NAME | quote }}
+  ENV: {{ .Values.env.ENV | quote }}
+  MARKET: {{ .Values.env.MARKET | quote }}
+  VERSION: {{ .Values.env.VERSION | quote }}
+  PORT: {{ .Values.env.PORT | quote }}
+  PUBLIC_BASE_URL: {{ .Values.env.PUBLIC_BASE_URL | quote }}
+  IDENTITY_URL: {{ .Values.env.IDENTITY_URL | quote }}
+

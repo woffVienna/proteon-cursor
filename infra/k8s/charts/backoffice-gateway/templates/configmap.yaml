@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backoffice-gateway-config
+data:
+  SERVICE_NAME: {{ .Values.env.SERVICE_NAME | quote }}
+  ENV: {{ .Values.env.ENV | quote }}
+  MARKET: {{ .Values.env.MARKET | quote }}
+  VERSION: {{ .Values.env.VERSION | quote }}
+  PORT: {{ .Values.env.PORT | quote }}
+  PUBLIC_BASE_URL: {{ .Values.env.PUBLIC_BASE_URL | quote }}
+  JWT_ISSUER: {{ .Values.env.JWT_ISSUER | quote }}
+  JWT_AUDIENCE: {{ .Values.env.JWT_AUDIENCE | quote }}
+  IDENTITY_URL: {{ .Values.env.IDENTITY_URL | quote }}
+  AUTH_URL: {{ .Values.env.AUTH_URL | quote }}
+  APP_KEY: {{ .Values.env.APP_KEY | quote }}
+  BASE_PATH: {{ .Values.env.BASE_PATH | default "/backoffice" | quote }}
+

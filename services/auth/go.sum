@@ -1,0 +1,8 @@
+github.com/go-chi/chi/v5 v5.2.5 h1:Eg4myHZBjyvJmAFjFvWgrqDTXFyOzjj7YIm3L3mu6Ug=
+github.com/go-chi/chi/v5 v5.2.5/go.mod h1:X7Gx4mteadT3eDOMTsXzmI4/rwUpOwBHLpAfupzFJP0=
+github.com/google/uuid v1.6.0 h1:NIvaJDMOsjHA8n1jAhLSgzrAzy1Hgr+hNrb57e+94F0=
+github.com/google/uuid v1.6.0/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
+github.com/woffVienna/proteon-cursor/libs/platform v0.0.0-20260310040649-5ee80d1abfcd h1:RHWgBRQhRKTXS2so4nhJ1mqRPfPdCGaQhD7UdbsDnY4=
+github.com/woffVienna/proteon-cursor/libs/platform v0.0.0-20260310040649-5ee80d1abfcd/go.mod h1:O+vOT92udAhrrlVvTVVW5HBhgWmg3h1b/WvElPzjLGs=
+golang.org/x/crypto v0.32.0 h1:euUpcYgM8WcP71gNpTqQCn6rC2t6ULUPiOzfWaXVVfc=
+golang.org/x/crypto v0.32.0/go.mod h1:ZnnJkOaASj8g0AjIduWNlq2NRxL0PlBrbKVyZ6V/Ugc=

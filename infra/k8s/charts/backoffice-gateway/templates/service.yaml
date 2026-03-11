@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: backoffice-gateway
+  labels:
+    app.kubernetes.io/name: backoffice-gateway
+spec:
+  type: {{ .Values.service.type }}
+  selector:
+    app.kubernetes.io/name: backoffice-gateway
+  ports:
+    - name: http
+      port: {{ .Values.service.port }}
+      targetPort: {{ .Values.service.targetPort }}
+

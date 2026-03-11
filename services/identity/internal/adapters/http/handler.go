@@ -103,7 +103,7 @@ func (h *Handler) PostV1AuthExchange(ctx context.Context, req server.PostV1AuthE
 
 	return server.PostV1AuthExchange200JSONResponse(server.AuthExchangeResponse{
 		AccessToken:    result.AccessToken,
-		TokenType:      server.Bearer,
+		TokenType:      server.AuthExchangeResponseTokenTypeBearer,
 		ExpiresIn:      result.ExpiresIn,
 		PlatformUserId: platformUserUUID,
 	}), nil
@@ -146,6 +146,43 @@ func (h *Handler) GetV1UsersUserId(ctx context.Context, req server.GetV1UsersUse
 		ExternalUserId: identity.ExternalUserID,
 		Tenant:         tenant,
 		CreatedAt:      identity.CreatedAt,
+	}), nil
+}
+
+func (h *Handler) PostInternalV1BackofficeTokens(ctx context.Context, req server.PostInternalV1BackofficeTokensRequestObject) (server.PostInternalV1BackofficeTokensResponseObject, error) {
+	if req.Body == nil {
+		return server.PostInternalV1BackofficeTokens400JSONResponse{
+			BadRequestJSONResponse: server.BadRequestJSONResponse(server.ErrorResponse{
+				Error: server.ErrorBody{Code: "BAD_REQUEST", Message: "missing request body"},
+			}),
+		}, nil
+	}
+
+	body := req.Body
+
+	var tenant string
+	if body.TenantId != nil {
+		tenant = *body.TenantId
+	}
+
+	aud := "backoffice"
+	if body.Audience != nil && *body.Audience != "" {
+		aud = *body.Audience
+	}
+
+	result, err := h.authSvc.IssueBackofficeToken(ctx, body.UserId.String(), string(body.SubjectType), tenant, aud)
+	if err != nil {
+		return server.PostInternalV1BackofficeTokens500JSONResponse{
+			InternalErrorJSONResponse: server.InternalErrorJSONResponse(server.ErrorResponse{
+				Error: server.ErrorBody{Code: "INTERNAL_ERROR", Message: "internal error"},
+			}),
+		}, nil
+	}
+
+	return server.PostInternalV1BackofficeTokens200JSONResponse(server.BackofficeTokenResponse{
+		AccessToken: result.AccessToken,
+		TokenType:   server.BackofficeTokenResponseTokenTypeBearer,
+		ExpiresIn:   result.ExpiresIn,
 	}), nil
 }
 

@@ -50,6 +50,33 @@ paths:
         "500":
           $ref: "../../../libs/api/openapi/common/errors.yml#/components/responses/InternalError"
 
+  /internal/v1/backoffice-tokens:
+    post:
+      tags: [internal]
+      operationId: postInternalV1BackofficeTokens
+      summary: Issue backoffice access token for a known user
+      description: |
+        Internal endpoint called by the auth service after authenticating a
+        backoffice user (operator or tenant user). Identity issues a short-lived
+        backoffice JWT for a known platform user ID.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BackofficeTokenRequest"
+      responses:
+        "200":
+          description: Backoffice token issued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BackofficeTokenResponse"
+        "400":
+          $ref: "../../../libs/api/openapi/common/errors.yml#/components/responses/BadRequest"
+        "500":
+          $ref: "../../../libs/api/openapi/common/errors.yml#/components/responses/InternalError"
+
   /v1/users/{userId}:
     get:
       tags: [identity]
@@ -160,6 +187,43 @@ components:
           type: string
           format: uuid
           description: Proteon platform user ID (stable across exchanges)
+
+    BackofficeTokenRequest:
+      type: object
+      additionalProperties: false
+      required: [user_id, subject_type]
+      properties:
+        user_id:
+          type: string
+          format: uuid
+          description: Platform user ID of the backoffice user
+        subject_type:
+          type: string
+          description: Type of backoffice user (operator or tenant_user)
+          enum: [operator, tenant_user]
+        tenant_id:
+          type: string
+          description: Optional tenant context for tenant users
+        audience:
+          type: string
+          description: Optional audience override (defaults to \"backoffice\")
+          example: backoffice
+
+    BackofficeTokenResponse:
+      type: object
+      additionalProperties: false
+      required: [access_token, token_type, expires_in]
+      properties:
+        access_token:
+          type: string
+        token_type:
+          type: string
+          enum: [Bearer]
+        expires_in:
+          type: integer
+          format: int32
+          minimum: 1
+          description: Token lifetime in seconds
 
     PlatformIdentityResponse:
       type: object

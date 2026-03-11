@@ -1,0 +1,6 @@
+github.com/go-chi/chi/v5 v5.2.5 h1:Eg4myHZBjyvJmAFjFvWgrqDTXFyOzjj7YIm3L3mu6Ug=
+github.com/go-chi/chi/v5 v5.2.5/go.mod h1:X7Gx4mteadT3eDOMTsXzmI4/rwUpOwBHLpAfupzFJP0=
+github.com/golang-jwt/jwt/v5 v5.2.1 h1:OuVbFODueb089Lh128TAcimifWaLhJwVflnrgM17wHk=
+github.com/golang-jwt/jwt/v5 v5.2.1/go.mod h1:pqrtFR0X4osieyHYxtmOUWsAWrfe1Q5UVIyoH402zdk=
+github.com/woffVienna/proteon-cursor/libs/platform v0.0.0-20260310040649-5ee80d1abfcd h1:RHWgBRQhRKTXS2so4nhJ1mqRPfPdCGaQhD7UdbsDnY4=
+github.com/woffVienna/proteon-cursor/libs/platform v0.0.0-20260310040649-5ee80d1abfcd/go.mod h1:O+vOT92udAhrrlVvTVVW5HBhgWmg3h1b/WvElPzjLGs=

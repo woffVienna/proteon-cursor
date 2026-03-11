@@ -20,7 +20,18 @@ import (
 
 // Defines values for AuthExchangeResponseTokenType.
 const (
-	Bearer AuthExchangeResponseTokenType = "Bearer"
+	AuthExchangeResponseTokenTypeBearer AuthExchangeResponseTokenType = "Bearer"
+)
+
+// Defines values for BackofficeTokenRequestSubjectType.
+const (
+	Operator   BackofficeTokenRequestSubjectType = "operator"
+	TenantUser BackofficeTokenRequestSubjectType = "tenant_user"
+)
+
+// Defines values for BackofficeTokenResponseTokenType.
+const (
+	BackofficeTokenResponseTokenTypeBearer BackofficeTokenResponseTokenType = "Bearer"
 )
 
 // Defines values for HealthResponseStatus.
@@ -54,6 +65,36 @@ type AuthExchangeResponse struct {
 
 // AuthExchangeResponseTokenType defines model for AuthExchangeResponse.TokenType.
 type AuthExchangeResponseTokenType string
+
+// BackofficeTokenRequest defines model for BackofficeTokenRequest.
+type BackofficeTokenRequest struct {
+	// Audience Optional audience override (defaults to \"backoffice\")
+	Audience *string `json:"audience,omitempty"`
+
+	// SubjectType Type of backoffice user (operator or tenant_user)
+	SubjectType BackofficeTokenRequestSubjectType `json:"subject_type"`
+
+	// TenantId Optional tenant context for tenant users
+	TenantId *string `json:"tenant_id,omitempty"`
+
+	// UserId Platform user ID of the backoffice user
+	UserId openapi_types.UUID `json:"user_id"`
+}
+
+// BackofficeTokenRequestSubjectType Type of backoffice user (operator or tenant_user)
+type BackofficeTokenRequestSubjectType string
+
+// BackofficeTokenResponse defines model for BackofficeTokenResponse.
+type BackofficeTokenResponse struct {
+	AccessToken string `json:"access_token"`
+
+	// ExpiresIn Token lifetime in seconds
+	ExpiresIn int32                            `json:"expires_in"`
+	TokenType BackofficeTokenResponseTokenType `json:"token_type"`
+}
+
+// BackofficeTokenResponseTokenType defines model for BackofficeTokenResponse.TokenType.
+type BackofficeTokenResponseTokenType string
 
 // ErrorBody defines model for ErrorBody.
 type ErrorBody struct {
@@ -122,6 +163,9 @@ type TooManyRequests = ErrorResponse
 
 // Unauthorized defines model for Unauthorized.
 type Unauthorized = ErrorResponse
+
+// PostInternalV1BackofficeTokensJSONRequestBody defines body for PostInternalV1BackofficeTokens for application/json ContentType.
+type PostInternalV1BackofficeTokensJSONRequestBody = BackofficeTokenRequest
 
 // PostV1AuthExchangeJSONRequestBody defines body for PostV1AuthExchange for application/json ContentType.
 type PostV1AuthExchangeJSONRequestBody = AuthExchangeRequest
@@ -308,6 +352,11 @@ func WithRequestEditorFn(fn RequestEditorFn) ClientOption {
 
 // The interface specification for the client above.
 type ClientInterface interface {
+	// PostInternalV1BackofficeTokensWithBody request with any body
+	PostInternalV1BackofficeTokensWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	PostInternalV1BackofficeTokens(ctx context.Context, body PostInternalV1BackofficeTokensJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetV1WellKnownJwks request
 	GetV1WellKnownJwks(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -321,6 +370,30 @@ type ClientInterface interface {
 
 	// GetV1UsersUserId request
 	GetV1UsersUserId(ctx context.Context, userId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+}
+
+func (c *Client) PostInternalV1BackofficeTokensWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostInternalV1BackofficeTokensRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostInternalV1BackofficeTokens(ctx context.Context, body PostInternalV1BackofficeTokensJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostInternalV1BackofficeTokensRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
 }
 
 func (c *Client) GetV1WellKnownJwks(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -381,6 +454,46 @@ func (c *Client) GetV1UsersUserId(ctx context.Context, userId openapi_types.UUID
 		return nil, err
 	}
 	return c.Client.Do(req)
+}
+
+// NewPostInternalV1BackofficeTokensRequest calls the generic PostInternalV1BackofficeTokens builder with application/json body
+func NewPostInternalV1BackofficeTokensRequest(server string, body PostInternalV1BackofficeTokensJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPostInternalV1BackofficeTokensRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewPostInternalV1BackofficeTokensRequestWithBody generates requests for PostInternalV1BackofficeTokens with any type of body
+func NewPostInternalV1BackofficeTokensRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/internal/v1/backoffice-tokens")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
 }
 
 // NewGetV1WellKnownJwksRequest generates requests for GetV1WellKnownJwks
@@ -554,6 +667,11 @@ func WithBaseURL(baseURL string) ClientOption {
 
 // ClientWithResponsesInterface is the interface specification for the client with responses above.
 type ClientWithResponsesInterface interface {
+	// PostInternalV1BackofficeTokensWithBodyWithResponse request with any body
+	PostInternalV1BackofficeTokensWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostInternalV1BackofficeTokensResponse, error)
+
+	PostInternalV1BackofficeTokensWithResponse(ctx context.Context, body PostInternalV1BackofficeTokensJSONRequestBody, reqEditors ...RequestEditorFn) (*PostInternalV1BackofficeTokensResponse, error)
+
 	// GetV1WellKnownJwksWithResponse request
 	GetV1WellKnownJwksWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetV1WellKnownJwksResponse, error)
 
@@ -567,6 +685,30 @@ type ClientWithResponsesInterface interface {
 
 	// GetV1UsersUserIdWithResponse request
 	GetV1UsersUserIdWithResponse(ctx context.Context, userId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetV1UsersUserIdResponse, error)
+}
+
+type PostInternalV1BackofficeTokensResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *BackofficeTokenResponse
+	JSON400      *BadRequest
+	JSON500      *InternalError
+}
+
+// Status returns HTTPResponse.Status
+func (r PostInternalV1BackofficeTokensResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostInternalV1BackofficeTokensResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
 }
 
 type GetV1WellKnownJwksResponse struct {
@@ -665,6 +807,23 @@ func (r GetV1UsersUserIdResponse) StatusCode() int {
 	return 0
 }
 
+// PostInternalV1BackofficeTokensWithBodyWithResponse request with arbitrary body returning *PostInternalV1BackofficeTokensResponse
+func (c *ClientWithResponses) PostInternalV1BackofficeTokensWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostInternalV1BackofficeTokensResponse, error) {
+	rsp, err := c.PostInternalV1BackofficeTokensWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostInternalV1BackofficeTokensResponse(rsp)
+}
+
+func (c *ClientWithResponses) PostInternalV1BackofficeTokensWithResponse(ctx context.Context, body PostInternalV1BackofficeTokensJSONRequestBody, reqEditors ...RequestEditorFn) (*PostInternalV1BackofficeTokensResponse, error) {
+	rsp, err := c.PostInternalV1BackofficeTokens(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostInternalV1BackofficeTokensResponse(rsp)
+}
+
 // GetV1WellKnownJwksWithResponse request returning *GetV1WellKnownJwksResponse
 func (c *ClientWithResponses) GetV1WellKnownJwksWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetV1WellKnownJwksResponse, error) {
 	rsp, err := c.GetV1WellKnownJwks(ctx, reqEditors...)
@@ -707,6 +866,46 @@ func (c *ClientWithResponses) GetV1UsersUserIdWithResponse(ctx context.Context, 
 		return nil, err
 	}
 	return ParseGetV1UsersUserIdResponse(rsp)
+}
+
+// ParsePostInternalV1BackofficeTokensResponse parses an HTTP response from a PostInternalV1BackofficeTokensWithResponse call
+func ParsePostInternalV1BackofficeTokensResponse(rsp *http.Response) (*PostInternalV1BackofficeTokensResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostInternalV1BackofficeTokensResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest BackofficeTokenResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
 }
 
 // ParseGetV1WellKnownJwksResponse parses an HTTP response from a GetV1WellKnownJwksWithResponse call

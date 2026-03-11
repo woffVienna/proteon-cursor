@@ -24,6 +24,7 @@ type IdentityLookup interface {
 // Implemented by adapters (e.g. Ed25519 JWT issuer).
 type TokenIssuer interface {
 	Issue(ctx context.Context, platformUserID, tenant string, ttl time.Duration) (string, error)
+	IssueBackoffice(ctx context.Context, userID, subjectType, tenant, audience string, ttl time.Duration) (string, error)
 	PublicKey() ed25519.PublicKey
 	Kid() string
 }

@@ -57,6 +57,28 @@ func (j *JWTIssuer) Issue(_ context.Context, platformUserID, tenant string, ttl 
 	return token.SignedString(j.privateKey)
 }
 
+// IssueBackoffice implements interfaces.TokenIssuer for backoffice tokens.
+// It allows specifying a dedicated audience and adds a subject_type claim.
+func (j *JWTIssuer) IssueBackoffice(_ context.Context, userID, subjectType, tenant, audience string, ttl time.Duration) (string, error) {
+	now := time.Now()
+	if audience == "" {
+		audience = "backoffice"
+	}
+	claims := jwt.MapClaims{
+		"iss":          j.issuer,
+		"aud":          audience,
+		"sub":          userID,
+		"subject_type": subjectType,
+		"iat":          now.Unix(),
+		"nbf":          now.Unix(),
+		"exp":          now.Add(ttl).Unix(),
+		"tenant":       tenant,
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodEdDSA, claims)
+	token.Header["kid"] = j.kid
+	return token.SignedString(j.privateKey)
+}
+
 // PublicKey implements interfaces.TokenIssuer.
 func (j *JWTIssuer) PublicKey() ed25519.PublicKey {
 	return j.publicKey

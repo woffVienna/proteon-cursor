@@ -1,0 +1,32 @@
+image:
+  repository: proteon/backoffice-gateway-service
+  tag: dev
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 8082
+  targetPort: 8082
+
+ingress:
+  enabled: true
+  className: traefik
+  annotations: {}
+  host: ""
+  path: /backoffice
+  pathType: Prefix
+
+env:
+  SERVICE_NAME: backoffice-gateway
+  ENV: dev
+  MARKET: AT
+  VERSION: dev
+  PORT: "8082"
+  PUBLIC_BASE_URL: http://backoffice-gateway:8082
+  JWT_ISSUER: proteon.identity
+  JWT_AUDIENCE: backoffice
+  IDENTITY_URL: http://identity:8081
+  AUTH_URL: http://auth:8083
+  APP_KEY: dev-backoffice-key-001
+  BASE_PATH: /backoffice
+

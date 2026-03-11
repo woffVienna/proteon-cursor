@@ -4,5 +4,7 @@ use (
 	./contracts
 	./libs/platform
 	./services/api-gateway
+	./services/auth
+	./services/backoffice-gateway
 	./services/identity
 )

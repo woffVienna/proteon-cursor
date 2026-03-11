@@ -1,0 +1,22 @@
+image:
+  repository: proteon/auth-service
+  tag: dev
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 8083
+  targetPort: 8083
+
+ingress:
+  enabled: false
+
+env:
+  SERVICE_NAME: auth-service
+  ENV: dev
+  MARKET: AT
+  VERSION: dev
+  PORT: "8083"
+  PUBLIC_BASE_URL: http://auth:8083
+  IDENTITY_URL: http://identity:8081
+

@@ -1,0 +1,52 @@
+openapi: 3.0.3
+info:
+  title: Proteon Backoffice Gateway
+  version: 0.1.0
+  description: |
+    Edge service for backoffice traffic. Validates app-key for login routes,
+    validates JWTs for authenticated routes, and routes requests to the auth
+    and identity services.
+
+servers:
+  - url: http://localhost:8082
+    description: Local development
+
+tags:
+  - name: auth
+    description: Backoffice authentication (proxied to auth service)
+  - name: internal
+    description: Gateway-owned operational endpoints
+
+paths:
+  /v1/auth/login:
+    post:
+      tags: [auth]
+      summary: Backoffice login (proxied to auth service)
+      description: |
+        Proxied to auth service. Requires a valid app-key header. Returns
+        a backoffice access token on success.
+      responses:
+        "200":
+          description: Login successful
+        "401":
+          description: Unauthorized (missing/invalid app-key or invalid credentials)
+        "500":
+          description: Internal error
+
+  /v1/health:
+    get:
+      tags: [internal]
+      summary: Gateway health check
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "../../../libs/api/openapi/common/components.yml#/components/schemas/HealthResponse"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      $ref: "../../../libs/api/openapi/common/components.yml#/components/securitySchemes/bearerAuth"
+

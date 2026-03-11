@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backoffice-gateway
+  labels:
+    app.kubernetes.io/name: backoffice-gateway
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: backoffice-gateway
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: backoffice-gateway
+    spec:
+      containers:
+        - name: backoffice-gateway
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.service.targetPort }}
+              name: http
+          envFrom:
+            - configMapRef:
+                name: backoffice-gateway-config
+

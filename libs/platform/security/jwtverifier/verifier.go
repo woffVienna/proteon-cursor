@@ -37,16 +37,15 @@ type Config struct {
 	Leeway time.Duration
 }
 
-// Claims is the minimum set of claims you care about platform-wide.
-// Keep it small; treat everything else as optional.
 type Claims struct {
-	Subject   string
-	Tenant    string
-	Scopes    []string
-	SessionID string // optional; empty if not present
-	KeyID     string
-	ExpiresAt time.Time
-	IssuedAt  time.Time
+	Subject     string
+	Tenant      string
+	SubjectType string
+	Scopes      []string
+	SessionID   string // optional; empty if not present
+	KeyID       string
+	ExpiresAt   time.Time
+	IssuedAt    time.Time
 }
 
 type Verifier struct {
@@ -135,6 +134,9 @@ func (v *Verifier) Verify(rawToken string) (Claims, error) {
 		return Claims{}, wrap(ErrUnauthorized, ErrMissingTenant)
 	}
 
+	// subject_type (optional; e.g. \"player\", \"operator\", \"tenant_user\")
+	subjectType, _ := claims["subject_type"].(string)
+
 	// scopes (optional): support "scope": "a b" or "scopes": ["a","b"]
 	var scopes []string
 	if scopeStr, ok := claims["scope"].(string); ok && scopeStr != "" {
@@ -163,13 +165,14 @@ func (v *Verifier) Verify(rawToken string) (Claims, error) {
 	}
 
 	return Claims{
-		Subject:   sub,
-		Tenant:    tenant,
-		Scopes:    scopes,
-		SessionID: sid,
-		KeyID:     kid,
-		ExpiresAt: exp,
-		IssuedAt:  iat,
+		Subject:     sub,
+		Tenant:      tenant,
+		SubjectType: subjectType,
+		Scopes:      scopes,
+		SessionID:   sid,
+		KeyID:       kid,
+		ExpiresAt:   exp,
+		IssuedAt:    iat,
 	}, nil
 }
 

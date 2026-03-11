@@ -9,6 +9,7 @@ import (
 )
 
 const accessTokenTTL = 10 * time.Minute
+const backofficeTokenTTL = 10 * time.Minute
 
 // Service implements the auth exchange use case.
 type Service struct {
@@ -51,6 +52,19 @@ func (s *Service) Exchange(ctx context.Context, provider, externalUserID, tenant
 		AccessToken:    accessToken,
 		PlatformUserID: identity.PlatformUserID,
 		ExpiresIn:      int32(accessTokenTTL.Seconds()),
+	}, nil
+}
+
+// IssueBackofficeToken issues a backoffice access token for a known platform user.
+func (s *Service) IssueBackofficeToken(ctx context.Context, userID, subjectType, tenant, audience string) (*domain.TokenResult, error) {
+	accessToken, err := s.issuer.IssueBackoffice(ctx, userID, subjectType, tenant, audience, backofficeTokenTTL)
+	if err != nil {
+		return nil, err
+	}
+	return &domain.TokenResult{
+		AccessToken:    accessToken,
+		PlatformUserID: userID,
+		ExpiresIn:      int32(backofficeTokenTTL.Seconds()),
 	}, nil
 }
 

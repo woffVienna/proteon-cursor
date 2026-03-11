@@ -1,0 +1,83 @@
+openapi: 3.0.3
+info:
+  title: Proteon Auth Service API
+  version: 0.1.0
+  description: |
+    Backoffice authentication service. Owns authentication methods and
+    credentials for backoffice users (operators and tenant users) and calls
+    the identity service to issue backoffice JWTs.
+
+servers:
+  - url: http://localhost:8083
+    description: Local development
+
+tags:
+  - name: auth
+  - name: internal
+
+paths:
+  /v1/login:
+    post:
+      tags: [auth]
+      summary: Backoffice login with username/password
+      description: |
+        Authenticates a backoffice user (operator or tenant user) using
+        credentials. On success, returns a short-lived backoffice access
+        token issued by the identity service.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+        "401":
+          description: Invalid credentials
+        "500":
+          description: Internal error
+
+  /v1/health:
+    get:
+      tags: [internal]
+      summary: Health check
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "../../../libs/api/openapi/common/components.yml#/components/schemas/HealthResponse"
+
+components:
+  schemas:
+    LoginRequest:
+      type: object
+      additionalProperties: false
+      required: [username, password]
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+
+    LoginResponse:
+      type: object
+      additionalProperties: false
+      required: [access_token, token_type, expires_in]
+      properties:
+        access_token:
+          type: string
+        token_type:
+          type: string
+          enum: [Bearer]
+        expires_in:
+          type: integer
+          format: int32
+          minimum: 1
+
