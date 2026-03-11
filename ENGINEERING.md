@@ -247,6 +247,7 @@ Root Makefile:
 -   deps-uninstall
 -   image-load
 -   deploy
+-   redeploy
 -   deploy-all
 -   stack-up
 -   stack-down

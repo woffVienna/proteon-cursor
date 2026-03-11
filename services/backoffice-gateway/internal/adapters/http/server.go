@@ -57,39 +57,25 @@ func (s *Server) Router() http.Handler {
 	r.Use(chimw.Timeout(30 * time.Second))
 	r.Use(chimw.Logger)
 
-	mount := func(r chi.Router) {
-		specRoute := "/openapi.yaml"
-		swaggerRoute := "/swagger"
-		healthRoute := "/v1/health"
-		if s.cfg.BasePath != "" {
-			specRoute = s.cfg.BasePath + "/openapi.yaml"
-			swaggerRoute = s.cfg.BasePath + "/swagger"
-			healthRoute = s.cfg.BasePath + "/v1/health"
-		}
-		httpcommon.MountDocsAndHealth(r, httpcommon.DocsOptions{
-			Title:        "Proteon Backoffice Gateway - Swagger UI",
-			SpecFilePath: s.cfg.OpenAPIBundlePath,
-			SpecRoute:    specRoute,
-			SwaggerRoute: swaggerRoute,
-			HealthRoute:  healthRoute,
-		})
+	prefix := s.cfg.BasePath
 
-		r.Group(func(r chi.Router) {
-			r.Use(s.appKeyMW)
-			r.Post("/v1/auth/login", authLoginProxy(s.authProxy))
-		})
+	httpcommon.MountDocsAndHealth(r, httpcommon.DocsOptions{
+		Title:        "Proteon Backoffice Gateway - Swagger UI",
+		SpecFilePath: s.cfg.OpenAPIBundlePath,
+		SpecRoute:    prefix + "/openapi.yaml",
+		SwaggerRoute: prefix + "/swagger",
+		HealthRoute:  prefix + "/v1/health",
+	})
 
-		r.Group(func(r chi.Router) {
-			r.Use(s.jwtAuthMW)
-			_ = bomw.HeaderPlatformUserID
-		})
-	}
+	r.Group(func(r chi.Router) {
+		r.Use(s.appKeyMW)
+		r.Post(prefix+"/v1/auth/login", authLoginProxy(s.authProxy))
+	})
 
-	if s.cfg.BasePath != "" {
-		r.Route(s.cfg.BasePath, mount)
-	} else {
-		mount(r)
-	}
+	r.Group(func(r chi.Router) {
+		r.Use(s.jwtAuthMW)
+		_ = bomw.HeaderPlatformUserID
+	})
 
 	return r
 }

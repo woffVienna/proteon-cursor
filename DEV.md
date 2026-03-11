@@ -234,6 +234,15 @@ make image-load SERVICE=identity
 exists before image build. Docker runtime image includes this bundled spec so
 `/swagger` and `/openapi.yaml` work inside containers as well.
 
+To rebuild, import, and deploy a single service in one step:
+
+``` bash
+make redeploy SERVICE=identity
+```
+
+This is the recommended command after code or config changes to a
+single service.
+
 ------------------------------------------------------------------------
 
 ## Container Networking Rules

@@ -1,7 +1,7 @@
 image:
   repository: proteon/backoffice-gateway-service
   tag: dev
-  pullPolicy: IfNotPresent
+  pullPolicy: Never
 
 service:
   type: ClusterIP
@@ -22,7 +22,7 @@ env:
   MARKET: AT
   VERSION: dev
   PORT: "8082"
-  PUBLIC_BASE_URL: http://backoffice-gateway:8082
+  PUBLIC_BASE_URL: http://localhost:8080/backoffice
   JWT_ISSUER: proteon.identity
   JWT_AUDIENCE: backoffice
   IDENTITY_URL: http://identity:8081

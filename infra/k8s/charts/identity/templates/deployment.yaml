@@ -13,6 +13,8 @@ spec:
     metadata:
       labels:
         app.kubernetes.io/name: identity
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
     spec:
       containers:
         - name: identity

@@ -10,7 +10,7 @@ info:
 
 servers:
   - url: http://localhost:8080
-    description: Local development (via k3d ingress or direct)
+    description: Local k3d stack / Local development (make dev)
 
 tags:
   - name: auth

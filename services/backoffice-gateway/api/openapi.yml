@@ -8,8 +8,10 @@ info:
     and identity services.
 
 servers:
+  - url: http://localhost:8080/backoffice
+    description: Local k3d stack
   - url: http://localhost:8082
-    description: Local development
+    description: Local development (make dev)
 
 tags:
   - name: auth
@@ -25,9 +27,37 @@ paths:
       description: |
         Proxied to auth service. Requires a valid app-key header. Returns
         a backoffice access token on success.
+      security:
+        - appKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [username, password]
+              properties:
+                username:
+                  type: string
+                password:
+                  type: string
       responses:
         "200":
           description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access_token:
+                    type: string
+                  token_type:
+                    type: string
+                    enum: [Bearer]
+                  expires_in:
+                    type: integer
+                    format: int32
         "401":
           description: Unauthorized (missing/invalid app-key or invalid credentials)
         "500":
@@ -47,6 +77,10 @@ paths:
 
 components:
   securitySchemes:
+    appKeyAuth:
+      type: apiKey
+      in: header
+      name: X-App-Key
     bearerAuth:
       $ref: "../../../libs/api/openapi/common/components.yml#/components/securitySchemes/bearerAuth"
 

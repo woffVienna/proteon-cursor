@@ -1,7 +1,7 @@
 image:
   repository: proteon/api-gateway-service
   tag: dev
-  pullPolicy: IfNotPresent
+  pullPolicy: Never
 
 service:
   type: ClusterIP

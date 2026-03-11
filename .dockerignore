@@ -1,0 +1,17 @@
+.git
+.idea
+.vscode
+.DS_Store
+*.swp
+*.swo
+*.log
+
+tools/bin/
+tools/node/node_modules/
+
+services/*/.build/bin/
+services/*/.env
+services/*/.env.*
+
+docs/
+infra/

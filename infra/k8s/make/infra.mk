@@ -29,6 +29,7 @@ help-infra:
 	@echo "  image-load       - build image and import into k3d (SERVICE=...)"
 	@echo "  deploy           - deploy service helm chart (SERVICE=...)"
 	@echo "  deploy-all       - deploy all local helm-charted services"
+	@echo "  redeploy         - rebuild, import, and deploy a single service (SERVICE=...)"
 	@echo "  wait-deps        - wait for postgres + nats readiness"
 	@echo "  wait-services    - wait for service rollout readiness"
 	@echo "  wait-ingress     - wait for local ingress HTTP readiness"
@@ -96,6 +97,10 @@ deploy:
 		--create-namespace \
 		--values "$(HELM_CHARTS_DIR)/$(SERVICE)/values.yaml" \
 		--values "$(HELM_CHARTS_DIR)/$(SERVICE)/values-local.yaml"
+	@kubectl rollout restart "deployment/$(SERVICE)" --namespace "$(K8S_NAMESPACE)"
+
+.PHONY: redeploy
+redeploy: image-load deploy
 
 .PHONY: deploy-all
 deploy-all:

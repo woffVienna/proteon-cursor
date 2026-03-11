@@ -1,7 +1,7 @@
 image:
   repository: proteon/auth-service
   tag: dev
-  pullPolicy: IfNotPresent
+  pullPolicy: Never
 
 service:
   type: ClusterIP
