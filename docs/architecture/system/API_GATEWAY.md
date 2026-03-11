@@ -1,7 +1,7 @@
 # API Gateway
 
 This document defines the intended role, responsibilities, and limits of
-the future API gateway in Proteon.
+the API gateway in Proteon.
 
 It exists to prevent the gateway from becoming a hidden orchestration layer
 or a business-logic-heavy god service.

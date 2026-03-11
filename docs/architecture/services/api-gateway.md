@@ -46,9 +46,8 @@ Reference documents:
 - **Internal layering**: `adapters -> application -> domain`
 
 Domain layer is expected to be minimal or empty for an edge service.
-Application layer contains routing orchestration and request admission
-logic. Adapters contain HTTP transport, downstream service clients, and
-generated server code.
+Adapters contain HTTP transport, reverse proxy, auth middleware, and
+JWKS fetcher. The gateway does not use oapi-codegen for proxied routes.
 
 ### Canonical structure
 
@@ -56,12 +55,13 @@ generated server code.
 
       api/
         openapi.yml
-        oapi-codegen.server.yml
 
       internal/
         adapters/
+          auth/
           http/
-            generated/server/
+            middleware/
+            proxy/
         application/
         domain/
         platform/
@@ -76,8 +76,8 @@ generated server code.
 
 - Exposes an HTTP API: **Yes**
 - OpenAPI source of truth: `services/api-gateway/api/openapi.yml`
-- Generated server code:
-  `services/api-gateway/internal/adapters/http/generated/server/`
+- The gateway uses OpenAPI for documentation only; no server codegen.
+  Routing is implemented with chi and reverse proxy to downstream services.
 - This service does not publish a shared HTTP client for other services.
   It is the external entry point, not a service consumed internally.
 
@@ -141,4 +141,4 @@ relevant downstream domain service.
 - **Observability requirements**: request volume, route-level latency,
   error rates, upstream dependency metrics, auth rejection metrics,
   rate-limit metrics, request tracing and correlation
-- **Helm chart**: `infra/k8s/charts/api-gateway/` (when created)
+- **Helm chart**: `infra/k8s/charts/api-gateway/`

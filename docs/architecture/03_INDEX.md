@@ -36,7 +36,7 @@ Then use the topic-specific documents below.
 | `system/EVENT_MODEL.md` | event-driven architecture semantics |
 | `system/EVENT_OPERATIONS.md` | runtime behaviour for event processing |
 | `system/SERVICE_TYPES.md` | allowed service roles and expectations |
-| `system/API_GATEWAY.md` | role and limits of the future API gateway |
+| `system/API_GATEWAY.md` | role and limits of the API gateway |
 
 ------------------------------------------------------------------------
 

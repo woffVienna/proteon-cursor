@@ -2,7 +2,8 @@
 
 ## Status
 
-Proposed
+Accepted. Implemented: identity auth exchange and api-gateway with JWT
+validation and reverse proxy to identity.
 
 ## Goal
 
